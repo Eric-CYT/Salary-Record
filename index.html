@@ -1627,7 +1627,7 @@ function renderExpense() {
         const coords=data.map((_,i)=>xP(i)+','+yP(vals[i])).join(' ');
         const area=PL+','+(PT+IH)+' '+coords+' '+xP(data.length-1)+','+(PT+IH);
         const poly=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-        poly.setAttribute('points',area);poly.setAttribute('fill',color.replace(')',',0.06)').replace('rgb','rgba'));svg.appendChild(poly);
+        poly.setAttribute('points',area);poly.setAttribute('fill',color+'22');svg.appendChild(poly);
         const pl2=document.createElementNS('http://www.w3.org/2000/svg','polyline');
         pl2.setAttribute('points',coords);pl2.setAttribute('fill','none');
         pl2.setAttribute('stroke',color);pl2.setAttribute('stroke-width','1.8');
@@ -1665,8 +1665,8 @@ function renderExpense() {
         });
       }
 
-      drawLine(data.map(d=>d.exp),'#e07070','花費');
       drawLine(data.map(d=>d.sav),'#f0d060','存款');
+      drawLine(data.map(d=>d.exp),'#e07070','花費');
 
       // x labels
       const step=data.length>12?Math.ceil(data.length/8):1;
