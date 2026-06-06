@@ -1,0 +1,2033 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="薪資管理">
+<title>薪資管理系統</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:#0a0a0a;color:#ddd;font-family:'Noto Sans TC',sans-serif;overflow:hidden;}
+input,select,button{font-family:inherit;font-size:inherit;}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;display:none;}
+input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;display:none;}
+input[type=number]{-moz-appearance:textfield;}
+input:focus,select:focus{outline:none;}
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:4px;}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh;}
+
+/* NAV */
+nav{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#111;border-bottom:1px solid #1e1e1e;flex-shrink:0;flex-wrap:wrap;gap:8px;position:relative;z-index:100;}
+.nav-brand{display:flex;align-items:center;gap:10px;}
+.nav-logo{width:32px;height:32px;background:linear-gradient(135deg,#c8953a,#f0c060);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:#111;}
+.nav-title{font-size:14px;font-weight:700;color:#eee;}
+.saved-badge{font-size:11px;color:#6dd6a0;background:rgba(109,214,160,0.12);border:1px solid rgba(109,214,160,0.3);border-radius:20px;padding:3px 10px;transition:opacity 0.5s;font-family:monospace;}
+.nav-links{display:flex;gap:4px;}
+.nav-btn{display:flex;align-items:center;gap:5px;padding:6px 12px;border:1px solid transparent;border-radius:8px;background:transparent;color:#555;cursor:pointer;font-size:12px;transition:all 0.15s;}
+.nav-btn.active{background:#1a1a1a;color:#f0c060;border-color:#2a2200;}
+
+/* MAIN */
+main{flex:1;overflow-y:auto;padding-bottom:40px;}
+.page{max-width:860px;margin:0 auto;padding:14px 12px;display:flex;flex-direction:column;gap:12px;}
+
+/* CONFIG ROW */
+.config-row{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;}
+.config-group{display:flex;flex-direction:column;gap:4px;}
+.config-label{font-size:11px;color:#555;letter-spacing:0.08em;text-transform:uppercase;}
+.input-pill{display:flex;align-items:center;border:1px solid #252525;border-radius:8px;overflow:hidden;background:#111;}
+.pill-pre{padding:0 10px;color:#555;font-size:12px;font-family:monospace;border-right:1px solid #252525;background:#181818;align-self:stretch;display:flex;align-items:center;}
+.pill-input{border:none;background:transparent;color:#eee;padding:8px 10px;font-size:14px;width:100px;font-family:monospace;}
+.hint{font-size:11px;color:#c8953a;font-family:monospace;}
+select.styled{border:1px solid #252525;border-radius:8px;background:#111;color:#ccc;padding:8px 10px;font-size:13px;}
+.stat-chips{margin-left:auto;display:flex;align-items:center;background:#111;border:1px solid #252525;border-radius:20px;padding:5px 12px;gap:0;}
+.stat-chip{display:flex;align-items:baseline;gap:3px;}
+.stat-n{font-size:15px;font-weight:700;color:#eee;font-family:monospace;}
+.stat-u{font-size:11px;color:#555;}
+.stat-div{width:1px;height:14px;background:#2a2a2a;margin:0 9px;}
+
+/* SUB TABS */
+.sub-tab-row{display:flex;gap:6px;}
+.sub-tab{padding:6px 14px;border:1px solid #222;border-radius:8px;background:transparent;color:#555;cursor:pointer;font-size:13px;}
+.sub-tab.active{background:#181818;color:#f0c060;border-color:#3a2c00;}
+
+/* OT TABLE */
+.table-wrap{border:1px solid #1a1a1a;border-radius:12px;overflow:hidden;}
+.t-head{background:#141414;font-size:11px;color:#444;text-transform:uppercase;letter-spacing:0.06em;}
+.t-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid #141414;transition:background 0.1s;}
+.t-row:hover{background:rgba(255,255,255,0.02);}
+.t-row.weekend{background:rgba(255,255,255,0.015);}
+.t-row.has-data{background:rgba(200,149,58,0.06);}
+.t-row.is-today{background:rgba(80,160,255,0.12);border-left:3px solid #70a8ff;}
+.col0{width:84px;flex-shrink:0;display:flex;align-items:center;gap:5px;}
+.col1{width:78px;flex-shrink:0;}
+.col2{width:104px;flex-shrink:0;}
+.col3{flex:1;}
+.col4{width:86px;flex-shrink:0;text-align:right;}
+.today-dot{width:6px;height:6px;border-radius:50%;background:#70a8ff;flex-shrink:0;}
+.dow-badge{width:21px;height:21px;border:1px solid;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+.date-text{font-family:monospace;font-size:13px;color:#999;}
+.inline-field{display:flex;align-items:center;border:1px solid #222;border-radius:6px;background:#0d0d0d;overflow:hidden;max-width:76px;}
+.hours-input{border:none;background:transparent;color:#eee;padding:5px 7px;font-size:14px;width:46px;font-family:monospace;text-align:center;}
+.h-unit{color:#444;font-size:11px;padding-right:5px;}
+.toggle-pair{display:flex;gap:4px;}
+.t-btn{padding:5px 7px;border:1px solid #222;border-radius:5px;background:transparent;color:#444;cursor:pointer;font-size:11px;transition:all 0.1s;}
+.t-btn.wd{background:#0e1f0e;color:#6dc06d;border-color:#2a4a2a;}
+.t-btn.hd{background:#1f0e0e;color:#e07070;border-color:#4a2a2a;}
+.note-in{width:100%;border:none;border-bottom:1px solid #1e1e1e;background:transparent;color:#777;padding:5px 2px;font-size:12px;}
+.pay-amt{font-family:monospace;font-size:13px;font-weight:600;color:#c8953a;}
+.pay-dash{color:#2a2a2a;}
+
+/* SUMMARY */
+.summary-wrap{display:flex;flex-direction:column;gap:12px;}
+.big-card{background:linear-gradient(135deg,#181200,#201800);border:1px solid #3a2c00;border-radius:16px;padding:20px;}
+.big-card-label{font-size:11px;color:#666;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;text-align:center;}
+.big-card-amt{font-size:32px;font-weight:900;color:#f0c060;font-family:monospace;text-align:center;}
+.big-card-sub{font-size:12px;color:#555;margin-top:5px;font-family:monospace;text-align:center;}
+.big-card-stats{display:flex;border-top:1px solid #2a2200;padding-top:14px;margin-top:16px;}
+.big-stat{flex:1;text-align:center;}
+.big-stat-v{font-size:16px;font-weight:700;color:#e8d080;font-family:monospace;}
+.big-stat-l{font-size:11px;color:#555;margin-top:3px;}
+.list-card{background:#111;border:1px solid #1e1e1e;border-radius:12px;overflow:hidden;}
+.list-row{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid #161616;}
+.list-total{display:flex;justify-content:space-between;padding:10px 14px;background:#161200;border-top:1px solid #2a2200;}
+.type-pill{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600;}
+.pill-wd{background:#0e1f0e;color:#6dc06d;}
+.pill-hd{background:#1f0e0e;color:#e07070;}
+.empty{text-align:center;color:#444;padding:40px 0;font-size:13px;}
+.rate-note{font-size:11px;color:#333;text-align:center;}
+
+/* SALARY */
+.salary-grid{display:grid;grid-template-columns:1fr;gap:12px;}
+.sal-section{border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;}
+.sal-section-header{display:flex;justify-content:space-between;align-items:center;}
+/* sal-item moved below */
+.sal-item-row1{display:flex;align-items:center;gap:6px;}
+.sal-name-input{flex:1;background:transparent;border:none;border-bottom:1px solid #2e2e2e;padding:2px 0;color:#bbb;font-size:13px;}
+.sal-del-btn{width:24px;height:24px;background:transparent;border:1px solid #2a2a2a;border-radius:5px;color:#444;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.sal-item-row2{display:flex;align-items:center;gap:6px;overflow:hidden;}
+.sal-nt{font-size:11px;color:#555;flex-shrink:0;}
+.sal-amt-input{flex:1;background:rgba(255,255,255,0.06);border:1px solid #2e2e2e;border-radius:6px;padding:8px 12px;color:#f0e080;font-size:18px;font-family:monospace;text-align:right;font-weight:600;-webkit-appearance:none;appearance:none;min-width:0;}
+.add-item-btn{align-self:flex-start;background:transparent;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;opacity:0.7;border-style:dashed;border-width:1px;}
+.drag-handle{width:28px;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:grab;flex-shrink:0;padding:0 4px;opacity:0.4;}
+.drag-handle:active{cursor:grabbing;opacity:0.8;}
+.drag-handle span{display:block;width:14px;height:2px;background:#888;border-radius:2px;}
+.sal-item{background:rgba(0,0,0,0.25);border:1px solid #222;border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;overflow:hidden;transition:opacity 0.15s,transform 0.15s;}
+.sal-item.dragging{opacity:0.4;transform:scale(0.98);}
+.sal-item.drag-over{border-color:#f0a060;background:rgba(240,160,96,0.12);}
+
+/* TAX CARD */
+.tax-card{background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:16px;}
+.tax-card-title{font-size:13px;font-weight:700;color:#888;margin-bottom:12px;}
+.tax-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px;}
+.tax-item{display:flex;flex-direction:column;gap:4px;}
+.tax-label{font-size:11px;color:#555;}
+.tax-val{font-size:15px;font-weight:700;font-family:monospace;}
+.tax-total-row{grid-column:1/-1;border-top:1px solid #2a2a2a;padding-top:12px;display:flex;flex-direction:column;gap:4px;}
+.withhold-box{background:#0d0d0d;border:1px solid #1e1e1e;border-radius:10px;padding:13px;}
+.withhold-title{font-size:11px;color:#555;margin-bottom:10px;}
+.withhold-row{display:flex;align-items:stretch;}
+.withhold-method{flex:1;display:flex;flex-direction:column;gap:5px;}
+.withhold-div{width:1px;background:#2a2a2a;margin:0 13px;}
+.wm-label{font-size:11px;color:#666;}
+.wm-amt{font-size:14px;font-weight:700;color:#e07070;font-family:monospace;}
+.wm-takehome{font-size:11px;color:#6dd6a0;font-family:monospace;}
+.withhold-note{font-size:10px;color:#333;margin-top:8px;}
+
+/* ANNUAL */
+.annual-header{text-align:center;padding:6px 0 2px;}
+.annual-year{font-size:24px;font-weight:900;color:#f0c060;font-family:monospace;}
+.annual-sub{font-size:12px;color:#555;margin-top:3px;}
+.annual-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;}
+.annual-card{background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:13px 15px;}
+.annual-card-label{font-size:11px;color:#555;margin-bottom:5px;}
+.annual-card-val{font-size:17px;font-weight:700;font-family:monospace;}
+.refund-card{background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:16px;}
+.refund-title{font-size:13px;font-weight:700;color:#888;margin-bottom:14px;}
+.refund-grid{display:flex;gap:0;}
+.refund-col{flex:1;display:flex;flex-direction:column;gap:7px;}
+.refund-col:nth-child(2){padding-left:16px;border-left:1px solid #2a2a2a;}
+.refund-col-title{font-size:12px;color:#666;margin-bottom:4px;}
+.refund-row{display:flex;justify-content:space-between;align-items:center;}
+.refund-sep{border-top:1px solid #2a2a2a;padding-top:8px;margin-top:4px;}
+.rl{font-size:12px;color:#666;}
+.rv{font-size:12px;font-family:monospace;color:#aaa;}
+.deduct-card{background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:14px;}
+.deduct-title{font-size:12px;color:#555;margin-bottom:8px;}
+.deduct-row{display:flex;justify-content:space-between;padding:4px 0;}
+.deduct-sep{border-top:1px solid #2a2a2a;margin-top:6px;padding-top:10px;}
+.deduct-note{font-size:10px;color:#333;margin-top:8px;line-height:1.6;}
+.annual-table{background:#111;border:1px solid #1e1e1e;border-radius:12px;overflow:hidden;}
+.ann-head{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid #222;font-size:11px;color:#444;text-transform:uppercase;}
+.ann-row{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid #161616;}
+
+/* CHART */
+.chart-card{background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:16px 14px;}
+.chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.chart-title{font-size:13px;font-weight:700;color:#888;}
+.chart-sub{font-size:10px;color:#444;}
+svg.chart{overflow:visible;display:block;width:100%;}
+
+/* EXPENSE */
+/* Category picker panel */
+.cat-picker-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;display:flex;align-items:flex-end;}
+.cat-picker-panel{background:#161616;border-radius:16px 16px 0 0;width:100%;max-height:70vh;overflow-y:auto;padding:16px 12px 32px;}
+.cat-picker-title{font-size:13px;font-weight:700;color:#888;text-align:center;margin-bottom:12px;}
+.cat-picker-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.cat-picker-item{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border-radius:10px;border:1px solid #2a2a2a;cursor:pointer;transition:all 0.1s;background:#111;}
+.cat-picker-item:active{transform:scale(0.95);}
+.cat-picker-item.selected{border-width:2px;}
+.cat-emoji{font-size:22px;line-height:1;}
+.cat-label{font-size:10px;text-align:center;line-height:1.2;}
+.exp-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+.exp-item{background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;}
+.exp-item-name{font-size:12px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.exp-input-row{display:flex;align-items:center;gap:4px;}
+.exp-nt{font-size:11px;color:#555;flex-shrink:0;}
+.exp-input{flex:1;background:transparent;border:none;border-bottom:1px solid #2a2a2a;padding:4px 0;color:#f0e080;font-size:16px;font-family:monospace;text-align:right;min-width:0;}
+.exp-total-card{background:linear-gradient(135deg,#0d1a0d,#0a150a);border:1px solid #2a4a2a;border-radius:14px;padding:18px 20px;}
+.exp-total-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.exp-cat-section{background:#111;border:1px solid #1e1e1e;border-radius:12px;overflow:hidden;}
+.exp-cat-header{padding:10px 14px;background:#161616;font-size:12px;font-weight:700;color:#888;letter-spacing:0.05em;}
+.exp-cat-row{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-top:1px solid #161616;}
+.exp-bar-wrap{height:6px;background:#1a1a1a;border-radius:3px;margin-top:3px;overflow:hidden;}
+.exp-bar{height:100%;border-radius:3px;transition:width 0.3s;}
+
+/* CHART BAR */
+.bar-chart-wrap{overflow-x:auto;padding-bottom:4px;}
+svg.bar-chart{display:block;}
+
+/* LOCK SCREEN */
+#lock-screen{position:fixed;inset:0;background:#0a0a0a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;z-index:9999;}
+.lock-logo{width:64px;height:64px;background:linear-gradient(135deg,#c8953a,#f0c060);border-radius:18px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:28px;color:#111;}
+.lock-title{font-size:18px;font-weight:700;color:#eee;}
+.lock-sub{font-size:12px;color:#555;}
+.lock-dots{display:flex;gap:14px;margin:8px 0;}
+.lock-dot{width:14px;height:14px;border-radius:50%;border:2px solid #333;background:transparent;transition:all 0.15s;}
+.lock-dot.filled{background:#f0c060;border-color:#f0c060;}
+.lock-dot.error{background:#e07070;border-color:#e07070;}
+.lock-pad{display:grid;grid-template-columns:repeat(3,72px);gap:12px;}
+.lock-key{width:72px;height:72px;border-radius:50%;border:1px solid #2a2a2a;background:#161616;color:#eee;font-size:22px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.1s;-webkit-tap-highlight-color:transparent;}
+.lock-key:active{background:#2a2a2a;transform:scale(0.93);}
+.lock-key.del{font-size:16px;color:#888;}
+.lock-shake{animation:shake 0.4s ease;}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+
+/* DASHBOARD */
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.dash-card{background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;}
+.dash-card.full{grid-column:1/-1;}
+.dash-card.accent-green{border-color:#2a4a2a;background:linear-gradient(135deg,#0d1a0d,#0a150a);}
+.dash-card.accent-red{border-color:#4a2a2a;background:linear-gradient(135deg,#1a0d0d,#150a0a);}
+.dash-card.accent-gold{border-color:#3a2c00;background:linear-gradient(135deg,#181200,#201800);}
+.dash-label{font-size:11px;color:#555;letter-spacing:0.05em;}
+.dash-val{font-size:22px;font-weight:800;font-family:monospace;}
+.dash-sub{font-size:10px;color:#444;margin-top:2px;}
+.dash-section-title{font-size:12px;font-weight:700;color:#666;letter-spacing:0.06em;text-transform:uppercase;padding:6px 0 4px;}
+
+/* LOADING */
+#loading{position:fixed;inset:0;background:#0a0a0a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:999;}
+.load-bar{width:120px;height:3px;background:#1a1a1a;border-radius:4px;overflow:hidden;}
+.load-fill{width:60%;height:100%;background:linear-gradient(90deg,#c8953a,#f0c060);border-radius:4px;animation:loadSlide 1s ease infinite alternate;}
+@keyframes loadSlide{from{transform:translateX(-20px)}to{transform:translateX(30px)}}
+.hidden{display:none!important;}
+</style>
+</head>
+<body>
+<div id="lock-screen">
+  <div class="lock-logo">薪</div>
+  <div class="lock-title">薪資管理系統</div>
+  <div class="lock-sub">請輸入密碼</div>
+  <div class="lock-dots" id="lock-dots">
+    <div class="lock-dot"></div><div class="lock-dot"></div>
+    <div class="lock-dot"></div><div class="lock-dot"></div>
+    <div class="lock-dot"></div><div class="lock-dot"></div>
+  </div>
+  <div class="lock-pad">
+    <button class="lock-key" onclick="lockInput('1')">1</button>
+    <button class="lock-key" onclick="lockInput('2')">2</button>
+    <button class="lock-key" onclick="lockInput('3')">3</button>
+    <button class="lock-key" onclick="lockInput('4')">4</button>
+    <button class="lock-key" onclick="lockInput('5')">5</button>
+    <button class="lock-key" onclick="lockInput('6')">6</button>
+    <button class="lock-key" onclick="lockInput('7')">7</button>
+    <button class="lock-key" onclick="lockInput('8')">8</button>
+    <button class="lock-key" onclick="lockInput('9')">9</button>
+    <button class="lock-key" style="visibility:hidden"></button>
+    <button class="lock-key" onclick="lockInput('0')">0</button>
+    <button class="lock-key del" onclick="lockDel()">⌫</button>
+  </div>
+</div>
+
+<div id="loading">
+  <div style="width:44px;height:44px;background:linear-gradient(135deg,#c8953a,#f0c060);border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;color:#111;">薪</div>
+  <div style="color:#555;font-size:13px;">載入資料中…</div>
+  <div class="load-bar"><div class="load-fill"></div></div>
+</div>
+
+<div id="app" class="hidden">
+  <nav>
+    <div class="nav-brand">
+      <div class="nav-logo">薪</div>
+      <span class="nav-title">薪資管理系統</span>
+    </div>
+    <div class="saved-badge" id="saved-badge" style="opacity:0">☁ 已儲存</div>
+    <div class="nav-links">
+      <button class="nav-btn" onclick="showPage('home')">🏠 總覽</button>
+      <button class="nav-btn" onclick="showPage('ot')">⏱ 加班</button>
+      <button class="nav-btn" onclick="showPage('salary')">💰 薪資單</button>
+      <button class="nav-btn" onclick="showPage('annual')">📈 年度</button>
+      <button class="nav-btn" onclick="showPage('expense')">💸 花費</button>
+    </div>
+  </nav>
+  <main id="main-content"></main>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+// STORAGE (Supabase - cross-device sync)
+// ══════════════════════════════════════════════
+const SUPABASE_URL = 'https://ooxjtcdmextrvlxiroox.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9veGp0Y2RtZXh0cnZseGlyb294Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzgyMjMsImV4cCI6MjA5NjI1NDIyM30.NCRTVJRXVRbrOxfxSIhiJRxXZYWgvWqtFWzv-ZP0THQ';
+const USER_ID = 'eric_cyt_main'; // fixed user id for single-user app
+
+// Local cache for fast reads
+const LS = {
+  get(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+
+async function dbGet(key) {
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/salary_data?user_id=eq.' + USER_ID + '&data_key=eq.' + key + '&select=data_value', {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
+      }
+    });
+    const rows = await res.json();
+    if (rows && rows.length > 0) return JSON.parse(rows[0].data_value);
+    return null;
+  } catch { return null; }
+}
+
+async function dbSet(key, value) {
+  try {
+    // Also save to localStorage as cache
+    LS.set(key, value);
+    await fetch(SUPABASE_URL + '/rest/v1/salary_data', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({
+        user_id: USER_ID,
+        data_key: key,
+        data_value: JSON.stringify(value),
+        updated_at: new Date().toISOString()
+      })
+    });
+  } catch {}
+}
+
+// ══════════════════════════════════════════════
+// TAIWAN TAX
+// ══════════════════════════════════════════════
+const W_TABLE = [
+  {max:84501,rate:0,base:0},{max:111000,rate:0.05,base:0},
+  {max:148000,rate:0.10,base:2775},{max:185000,rate:0.15,base:8275},
+  {max:222000,rate:0.20,base:15775},{max:Infinity,rate:0.30,base:35775}
+];
+function calcWT(t) {
+  for (let i=0;i<W_TABLE.length;i++) {
+    if (t<=W_TABLE[i].max) {
+      if (i===0) return 0;
+      const p=W_TABLE[i-1];
+      return Math.round(p.base+(t-(i===1?0:W_TABLE[i-2].max))*p.rate);
+    }
+  }
+  const l=W_TABLE[W_TABLE.length-2];
+  return Math.round(W_TABLE[W_TABLE.length-1].base+(t-l.max)*l.rate);
+}
+function calc5(t) { return t>84501?Math.round(t*0.05):0; }
+
+const TAX_BRACKETS=[
+  {th:0,r:0.05},{th:560000,r:0.12},{th:1260000,r:0.20},{th:2520000,r:0.30},{th:4720000,r:0.40}
+];
+const DEDUCTION = 131000+218000+97000; // 446000
+function calcAnnualTax(income) {
+  const net = Math.max(0, income - DEDUCTION);
+  let tax=0;
+  for (let i=TAX_BRACKETS.length-1;i>=0;i--) {
+    if (net>TAX_BRACKETS[i].th) {
+      tax=(net-TAX_BRACKETS[i].th)*TAX_BRACKETS[i].r;
+      for (let j=i-1;j>=0;j--) tax+=(TAX_BRACKETS[j+1].th-TAX_BRACKETS[j].th)*TAX_BRACKETS[j].r;
+      break;
+    }
+  }
+  return Math.round(tax);
+}
+
+// ══════════════════════════════════════════════
+// OT CALC
+// ══════════════════════════════════════════════
+function calcOT(hw, h, type) {
+  if (h<=0||hw<=0) return 0;
+  if (type==='holiday') return hw*2*h;
+  return hw*1.34*Math.min(h,2)+hw*1.67*Math.max(0,h-2);
+}
+
+// ══════════════════════════════════════════════
+// DATE HELPERS
+// ══════════════════════════════════════════════
+function toDS(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function today() { return toDS(new Date()); }
+function dow(ds) { return new Date(ds+'T00:00:00').getDay(); }
+const DOWL = ['日','一','二','三','四','五','六'];
+
+function getOTPeriods() {
+  const now=new Date();
+  return Array.from({length:12},(_,i)=>{
+    const ref=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const s=new Date(ref.getFullYear(),ref.getMonth()-1,26);
+    const e=new Date(ref.getFullYear(),ref.getMonth(),25);
+    return {
+      key:toDS(s), start:toDS(s), end:toDS(e),
+      label:s.getFullYear()+'/'+String(s.getMonth()+1).padStart(2,'0')+'/26 ～ '+e.getFullYear()+'/'+String(e.getMonth()+1).padStart(2,'0')+'/25'
+    };
+  });
+}
+function getDates(start,end) {
+  const dates=[],cur=new Date(start+'T00:00:00'),endD=new Date(end+'T00:00:00');
+  while(cur<=endD){dates.push(toDS(cur));cur.setDate(cur.getDate()+1);}
+  return dates;
+}
+function mk(y,m){return y+'-'+String(m).padStart(2,'0');}
+function curMK(){const n=new Date();return mk(n.getFullYear(),n.getMonth()+1);}
+function getMonthList(){
+  const now=new Date();
+  const start=new Date(2018,0,1); // Jan 2018
+  const months=[];
+  let cur=new Date(now.getFullYear(),now.getMonth(),1);
+  while(cur>=start){
+    months.push({key:mk(cur.getFullYear(),cur.getMonth()+1),label:cur.getFullYear()+' 年 '+(cur.getMonth()+1)+' 月'});
+    cur.setMonth(cur.getMonth()-1);
+  }
+  return months;
+}
+function fmt(n){return Math.round(n).toLocaleString('zh-TW');}
+
+// ══════════════════════════════════════════════
+// DEFAULTS
+// ══════════════════════════════════════════════
+// 應稅加項
+const DEF_TAX_ADD=[
+  {id:'basepay',name:'本薪',amount:''},
+  {id:'transport',name:'交通費',amount:''},
+  {id:'extraWage',name:'加發工資',amount:''},
+  {id:'taxOT',name:'應稅加班費',amount:''},
+  {id:'otherBonus',name:'其他獎金',amount:''},
+  {id:'yearend',name:'年終獎金',amount:''},
+  {id:'perfBonus',name:'績效獎金',amount:''},
+  {id:'otherTaxAdd',name:'其他應稅加項',amount:''},
+  {id:'overseasAllow',name:'海外津貼加項',amount:''}
+];
+// 應稅減項
+const DEF_TAX_DED=[
+  {id:'leaveSuspend',name:'留職停薪',amount:''},
+  {id:'personalLeave',name:'事假扣薪',amount:''},
+  {id:'sickLeave',name:'病假扣薪',amount:''},
+  {id:'otherBonusDed',name:'其他獎金',amount:''},
+  {id:'otherTaxDed',name:'其他應稅減項',amount:''},
+  {id:'retireSelf',name:'退休自提',amount:''}
+];
+// 免稅項目
+const DEF_EXEMPT=[
+  {id:'meal1',name:'免稅伙食津貼1',amount:''},
+  {id:'freeOT',name:'免稅加班費',amount:''},
+  {id:'otherExempt',name:'其他免稅加項',amount:''},
+  {id:'meal2',name:'免稅伙食津貼2',amount:''}
+];
+// 其他代扣
+const DEF_OTHER=[
+  {id:'labor',name:'勞保費',amount:''},
+  {id:'health',name:'健保費',amount:''},
+  {id:'suppHealth',name:'補充保費',amount:''},
+  {id:'groupIns',name:'團保費',amount:''},
+  {id:'welfare',name:'福利金',amount:''},
+  {id:'incomeTax',name:'薪資所得稅',amount:''},
+  {id:'bonusTax',name:'獎金所得稅',amount:''},
+  {id:'paidTax',name:'已支領稅',amount:''},
+  {id:'mealCost',name:'膳宿費',amount:''},
+  {id:'otherDed',name:'其他代扣項',amount:''}
+];
+const ANNUAL_IDS=new Set(['yearend','perfBonus','otherBonus']);
+
+// ── Expense categories (with emoji) ──
+const EXP_CATS = [
+  {id:'insurance',  name:'保險',    emoji:'🛡️', color:'#7090e0'},
+  {id:'telecom',    name:'電信費',  emoji:'📱', color:'#70b0e0'},
+  {id:'utility',    name:'水電費',  emoji:'💡', color:'#70d0c0'},
+  {id:'entertain',  name:'娛樂',    emoji:'🎮', color:'#e07090'},
+  {id:'invest',     name:'投資工具',emoji:'📈', color:'#f0c060'},
+  {id:'transport',  name:'交通',    emoji:'🚇', color:'#90c070'},
+  {id:'maintain',   name:'保養費',  emoji:'🔧', color:'#c090e0'},
+  {id:'grooming',   name:'儀容',    emoji:'💇', color:'#e090c0'},
+  {id:'breakfast',  name:'早餐',    emoji:'🍳', color:'#f0a060'},
+  {id:'lunch',      name:'午餐',    emoji:'🍱', color:'#e08040'},
+  {id:'dinner',     name:'晚餐',    emoji:'🍽️', color:'#c06030'},
+  {id:'teatime',    name:'下午茶',  emoji:'🧁', color:'#d0b060'},
+  {id:'latenight',  name:'宵夜',    emoji:'🌙', color:'#a07040'},
+  {id:'drinks',     name:'飲料',    emoji:'🧋', color:'#60c0d0'},
+  {id:'tea',        name:'茶葉',    emoji:'🍵', color:'#80d090'},
+  {id:'tax',        name:'稅務',    emoji:'🧾', color:'#e07070'},
+  {id:'loan',       name:'貸款',    emoji:'🏦', color:'#d06060'},
+  {id:'household',  name:'家用',    emoji:'🏠', color:'#b08060'},
+  {id:'snacks',     name:'零食',    emoji:'🍿', color:'#f0b070'},
+  {id:'medical',    name:'醫療費',  emoji:'🏥', color:'#70d070'},
+  {id:'donation',   name:'捐款',    emoji:'🙏', color:'#70c090'},
+  {id:'gift',       name:'紅包',    emoji:'🧧', color:'#e060a0'},
+  {id:'software',   name:'軟體費',  emoji:'💻', color:'#6090f0'},
+  {id:'creditcard', name:'信用卡費',emoji:'💳', color:'#9060d0'},
+  {id:'saving',     name:'存款',    emoji:'💰', color:'#f0d060'},
+  {id:'other',      name:'其它',    emoji:'📦', color:'#888888'},
+];
+// Saving category ID - excluded from expense total
+const SAVING_CAT_ID = 'saving';
+
+// New format: array of {id, catId, name, amount}
+function newExpItem(catId) {
+  const cat = EXP_CATS.find(c=>c.id===catId) || EXP_CATS[0];
+  return { id:'e_'+Date.now()+'_'+Math.random().toString(36).slice(2), catId: cat.id, name: cat.name, amount: '' };
+}
+function defExpenseMonth() { return []; }
+
+// Migrate old object format to new array format
+function migrateExpenseMonth(mk2) {
+  const d = STATE.expenseData[mk2];
+  if (!d) { STATE.expenseData[mk2] = []; return; }
+  if (Array.isArray(d)) return; // already new format
+  // Convert old {catId: amount} to array
+  const arr = [];
+  EXP_CATS.forEach(cat => {
+    const v = d[cat.id];
+    if (v && Number(v) > 0) arr.push({ id:'e_'+cat.id+'_'+Date.now(), catId: cat.id, name: cat.name, amount: String(v) });
+  });
+  STATE.expenseData[mk2] = arr;
+}
+function sumItems(items){return items.reduce((s,i)=>s+(Number(i.amount)||0),0);}
+function newItem(prefix){return {id:(prefix||'c')+'_'+Date.now()+'_'+Math.random().toString(36).slice(2),name:'',amount:''};}
+function defSalaryMonth(){return {
+  taxAdd:DEF_TAX_ADD.map(i=>({...i})),
+  taxDed:DEF_TAX_DED.map(i=>({...i})),
+  exempt:DEF_EXEMPT.map(i=>({...i})),
+  other:DEF_OTHER.map(i=>({...i}))
+};}
+
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+let STATE = {
+  page: 'home',
+  salary: '',
+  otPeriodKey: getOTPeriods()[0].key,
+  otSubTab: 'input',
+  otRecords: {},
+  salaryData: {},
+  salaryMonth: curMK(),
+  expenseData: {},
+  expenseMonth: curMK(),
+  expenseSubTab: 'input',
+  initSavings: '',   // 手動輸入的起始存款
+};
+
+let saveTimer = null;
+function flashSaved() {
+  const el = document.getElementById('saved-badge');
+  if (!el) return;
+  el.style.opacity = '1';
+  setTimeout(()=>{ el.style.opacity='0'; }, 1800);
+}
+function triggerSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    await Promise.all([
+      dbSet('st_salary', STATE.salary),
+      dbSet('st_otRecords', STATE.otRecords),
+      dbSet('st_salaryData', STATE.salaryData),
+      dbSet('st_expenseData', STATE.expenseData),
+      dbSet('st_initSavings', STATE.initSavings),
+    ]);
+    flashSaved();
+  }, 800);
+}
+
+// ══════════════════════════════════════════════
+// RENDER ENGINE
+// ══════════════════════════════════════════════
+function h(tag, attrs={}, ...children) {
+  const el = document.createElement(tag);
+  for (const [k,v] of Object.entries(attrs)) {
+    if (k==='class') el.className=v;
+    else if (k==='style') el.style.cssText=v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(),v);
+    else el.setAttribute(k,v);
+  }
+  for (const c of children.flat()) {
+    if (c==null||c===false) continue;
+    el.appendChild(typeof c==='string'||typeof c==='number' ? document.createTextNode(c) : c);
+  }
+  return el;
+}
+
+// ══════════════════════════════════════════════
+// PAGE: OT
+// ══════════════════════════════════════════════
+function renderOT() {
+  const periods = getOTPeriods();
+  const period = periods.find(p=>p.key===STATE.otPeriodKey)||periods[0];
+  const hw = STATE.salary ? Number(STATE.salary)/240 : 0;
+  const dates = getDates(period.start, period.end);
+  const todayDs = today();
+
+  const active = dates
+    .filter(d=>STATE.otRecords[d]&&Number(STATE.otRecords[d].hours)>0)
+    .map(d=>{
+      const r=STATE.otRecords[d],hrs=Number(r.hours);
+      return {date:d,hours:hrs,dayType:r.dayType,note:r.note||'',pay:calcOT(hw,hrs,r.dayType)};
+    });
+  const totalHrs = active.reduce((s,r)=>s+r.hours,0);
+  const totalPay = active.reduce((s,r)=>s+r.pay,0);
+
+  // Config row
+  const configRow = h('div',{class:'config-row'},
+    h('div',{class:'config-group'},
+      h('label',{class:'config-label'},'月薪'),
+      h('div',{class:'input-pill'},
+        h('span',{class:'pill-pre'},'NT$'),
+        h('input',{class:'pill-input',type:'number',inputmode:'decimal',placeholder:'32,000',value:STATE.salary,
+          oninput(e){STATE.salary=e.target.value;triggerSave();
+            const hint=this.closest('.config-group').querySelector('.hint');
+            const hw=STATE.salary?Number(STATE.salary)/240:0;
+            if(hw>0){if(!hint){const d=document.createElement('div');d.className='hint';d.textContent='時薪 NT$'+Math.round(hw).toLocaleString('zh-TW')+'/h';this.closest('.config-group').appendChild(d);}else{hint.textContent='時薪 NT$'+Math.round(hw).toLocaleString('zh-TW')+'/h';}}else if(hint){hint.remove();}
+          }})
+      ),
+      hw>0 ? h('div',{class:'hint'},'時薪 NT$'+fmt(hw)+'/h') : null
+    ),
+    h('div',{class:'config-group'},
+      h('label',{class:'config-label'},'計算區間'),
+      h('select',{class:'styled',onchange(e){STATE.otPeriodKey=e.target.value;renderPage();}},
+        ...periods.map(p=>Object.assign(h('option',{value:p.key},p.label),{selected:p.key===STATE.otPeriodKey}))
+      )
+    ),
+    h('div',{class:'stat-chips'},
+      h('div',{class:'stat-chip'},h('span',{class:'stat-n'},totalHrs),h('span',{class:'stat-u'},'hrs')),
+      h('div',{class:'stat-div'}),
+      h('div',{class:'stat-chip'},h('span',{class:'stat-n'},active.length),h('span',{class:'stat-u'},'天')),
+      totalPay>0 ? [h('div',{class:'stat-div'}),h('div',{class:'stat-chip'},h('span',{class:'stat-n',style:'color:#f0c060;font-size:13px'},'NT$'+fmt(totalPay)))] : null
+    )
+  );
+
+  // Sub tabs
+  const subTabs = h('div',{class:'sub-tab-row'},
+    h('button',{class:'sub-tab'+(STATE.otSubTab==='input'?' active':''),onclick(){STATE.otSubTab='input';renderPage();}},'填寫記錄'),
+    h('button',{class:'sub-tab'+(STATE.otSubTab==='summary'?' active':''),onclick(){STATE.otSubTab='summary';renderPage();}},'結算總覽')
+  );
+
+  let content;
+  if (STATE.otSubTab==='input') {
+    const tableHead = h('div',{class:'t-row t-head'},
+      h('span',{class:'col0'},'日期'),
+      h('span',{class:'col1'},'時數'),
+      h('span',{class:'col2'},'日別'),
+      h('span',{class:'col3'},'備註'),
+      h('span',{class:'col4'},'加班費')
+    );
+    const rows = dates.map(date=>{
+      const d=dow(date), isWE=d===0||d===6, isTd=date===todayDs;
+      const rec=STATE.otRecords[date]||{};
+      const hrs=Number(rec.hours)||0;
+      const dt=rec.dayType||(isWE?'holiday':'weekday');
+      const pay=hw>0&&hrs>0?calcOT(hw,hrs,dt):null;
+      const cls='t-row'+(isTd?' is-today':isWE?' weekend':'')+(hrs>0?' has-data':'');
+      const dowColor=d===0?'#ff7070':d===6?'#70a8ff':'#555';
+      const dowBorder=d===0?'#ff7070':d===6?'#70a8ff':'#2a2a2a';
+
+      return h('div',{class:cls},
+        h('div',{class:'col0'},
+          isTd?h('div',{class:'today-dot'}):null,
+          h('div',{class:'dow-badge',style:'color:'+dowColor+';border-color:'+dowBorder},DOWL[d]),
+          h('span',{class:'date-text',style:isTd?'color:#fff;font-weight:700':''},date.slice(5))
+        ),
+        h('div',{class:'col1'},
+          h('div',{class:'inline-field'},
+            h('input',{class:'hours-input',type:'number',inputmode:'decimal',min:'0',max:'24',step:'0.5',
+              placeholder:'—',value:rec.hours||'',
+              oninput(e){
+                if(!STATE.otRecords[date]) STATE.otRecords[date]={hours:'',dayType:isWE?'holiday':'weekday',note:''};
+                STATE.otRecords[date].hours=e.target.value;
+                triggerSave();
+                // just update pay display
+                const payEl=this.closest('.t-row').querySelector('.col4 span');
+                if(payEl){
+                  const h2=Number(e.target.value)||0,dt2=STATE.otRecords[date].dayType;
+                  if(hw>0&&h2>0){payEl.className='pay-amt';payEl.textContent='NT$'+fmt(calcOT(hw,h2,dt2));}
+                  else{payEl.className='pay-dash';payEl.textContent='—';}
+                }
+              }
+            }),
+            h('span',{class:'h-unit'},'h')
+          )
+        ),
+        h('div',{class:'col2'},
+          h('div',{class:'toggle-pair'},
+            h('button',{class:'t-btn'+(dt==='weekday'?' wd':''),onclick(){
+              if(!STATE.otRecords[date]) STATE.otRecords[date]={hours:'',dayType:'weekday',note:''};
+              STATE.otRecords[date].dayType='weekday';
+              triggerSave();renderPage();
+            }},'平日'),
+            h('button',{class:'t-btn'+(dt==='holiday'?' hd':''),onclick(){
+              if(!STATE.otRecords[date]) STATE.otRecords[date]={hours:'',dayType:'holiday',note:''};
+              STATE.otRecords[date].dayType='holiday';
+              triggerSave();renderPage();
+            }},'假日')
+          )
+        ),
+        h('div',{class:'col3'},
+          h('input',{class:'note-in',type:'text',placeholder:'備註...',value:rec.note||'',
+            oninput(e){
+              if(!STATE.otRecords[date]) STATE.otRecords[date]={hours:'',dayType:isWE?'holiday':'weekday',note:''};
+              STATE.otRecords[date].note=e.target.value;
+              triggerSave();
+            }
+          })
+        ),
+        h('div',{class:'col4'},
+          pay!=null?h('span',{class:'pay-amt'},'NT$'+fmt(pay)):h('span',{class:'pay-dash'},'—')
+        )
+      );
+    });
+    content = h('div',{class:'table-wrap'},tableHead,...rows);
+  } else {
+    // Summary
+    const bigCard = h('div',{class:'big-card'},
+      h('div',{class:'big-card-label'},'本期加班費合計'),
+      h('div',{class:'big-card-amt'},'NT$ '+fmt(totalPay)),
+      h('div',{class:'big-card-sub'},period.label),
+      h('div',{class:'big-card-stats'},
+        ...[['天數',active.length],['時數',totalHrs+'h'],['時薪','NT$'+fmt(hw||0)]].map(([l,v])=>
+          h('div',{class:'big-stat'},h('div',{class:'big-stat-v'},v),h('div',{class:'big-stat-l'},l))
+        )
+      )
+    );
+    if (active.length===0) {
+      content = h('div',{class:'summary-wrap'},bigCard,h('div',{class:'empty'},'尚無加班紀錄，請於「填寫記錄」填入時數'));
+    } else {
+      const listRows = active.map(r=>{
+        const d=dow(r.date);
+        const dc=d===0?'#ff7070':d===6?'#70a8ff':'#888';
+        return h('div',{class:'list-row'},
+          h('span',{style:'display:flex;align-items:center;gap:6px;flex:1'},
+            h('div',{class:'dow-badge',style:'font-size:10px;color:'+dc+';border-color:'+dc},DOWL[d]),
+            h('span',{class:'date-text'},r.date.slice(5))
+          ),
+          h('span',{style:'font-family:monospace;font-size:12px;color:#888;width:40px;text-align:center'},r.hours+'h'),
+          h('span',{style:'width:52px;text-align:center'},h('span',{class:'type-pill '+(r.dayType==='holiday'?'pill-hd':'pill-wd')},r.dayType==='holiday'?'假日':'平日')),
+          h('span',{style:'flex:1;font-size:11px;color:#555;text-align:right;padding-right:8px'},r.note),
+          h('span',{style:'font-family:monospace;font-size:13px;font-weight:600;color:#f0c060;width:90px;text-align:right'},'NT$'+fmt(r.pay))
+        );
+      });
+      const listCard = h('div',{class:'list-card'},
+        ...listRows,
+        h('div',{class:'list-total'},
+          h('span',{style:'color:#666'},'合計'),
+          h('span',{style:'font-family:monospace;font-size:16px;font-weight:700;color:#f0c060'},'NT$ '+fmt(totalPay))
+        )
+      );
+      content = h('div',{class:'summary-wrap'},bigCard,listCard,h('div',{class:'rate-note'},'勞基法第24條 ｜ 平日前2h×1.34 ／ 第3h起×1.67 ／ 假日全程×2.0'));
+    }
+  }
+
+  return h('div',{class:'page'},configRow,subTabs,content);
+}
+
+// ══════════════════════════════════════════════
+// PAGE: SALARY
+// ══════════════════════════════════════════════
+// ── drag-and-drop state ──
+let dragSec=null, dragIdx=null;
+
+// ── salary item row with drag handle ──
+function mkSalItem(item, sec, idx, items) {
+  const el = h('div',{class:'sal-item',draggable:'true'},
+    h('div',{class:'sal-item-row1'},
+      // drag handle
+      h('div',{class:'drag-handle'},
+        h('span'),h('span'),h('span')
+      ),
+      h('input',{class:'sal-name-input',type:'text',placeholder:'項目名稱',value:item.name,
+        oninput(e){item.name=e.target.value;triggerSave();}
+      }),
+      h('button',{class:'sal-del-btn',onclick(){
+        const d=STATE.salaryData[STATE.salaryMonth]||(STATE.salaryData[STATE.salaryMonth]=defSalaryMonth());
+        d[sec]=d[sec].filter(i=>i.id!==item.id);
+        triggerSave();renderPage();
+      }},'×')
+    ),
+    h('div',{class:'sal-item-row2'},
+      h('span',{class:'sal-nt'},'NT$'),
+      h('input',{class:'sal-amt-input',type:'number',inputmode:'decimal',placeholder:'',value:item.amount,
+        oninput(e){item.amount=e.target.value;triggerSave();}
+      })
+    )
+  );
+
+  // Desktop drag events
+  el.addEventListener('dragstart', e=>{
+    dragSec=sec; dragIdx=idx;
+    el.classList.add('dragging');
+    e.dataTransfer.effectAllowed='move';
+  });
+  el.addEventListener('dragend', ()=>{ el.classList.remove('dragging'); });
+  el.addEventListener('dragover', e=>{ e.preventDefault(); el.classList.add('drag-over'); });
+  el.addEventListener('dragleave', ()=>{ el.classList.remove('drag-over'); });
+  el.addEventListener('drop', e=>{
+    e.preventDefault();
+    el.classList.remove('drag-over');
+    if (dragSec!==sec||dragIdx===null||dragIdx===idx) return;
+    const d=STATE.salaryData[STATE.salaryMonth];
+    const arr=d[sec];
+    const moved=arr.splice(dragIdx,1)[0];
+    arr.splice(idx,0,moved);
+    dragIdx=null; dragSec=null;
+    triggerSave(); renderPage();
+  });
+
+  // Touch drag events (mobile)
+  let touchStartY=0, touchClone=null, touchTargetIdx=null;
+  el.addEventListener('touchstart', e=>{
+    if(!e.target.closest('.drag-handle')) return;
+    e.preventDefault();
+    touchStartY=e.touches[0].clientY;
+    dragSec=sec; dragIdx=idx;
+    el.classList.add('dragging');
+    // create visual clone
+    touchClone=el.cloneNode(true);
+    touchClone.style.cssText='position:fixed;z-index:9999;left:'+el.getBoundingClientRect().left+'px;top:'+el.getBoundingClientRect().top+'px;width:'+el.offsetWidth+'px;opacity:0.85;pointer-events:none;transition:none;';
+    document.body.appendChild(touchClone);
+  },{passive:false});
+
+  el.addEventListener('touchmove', e=>{
+    if(!touchClone) return;
+    e.preventDefault();
+    const dy=e.touches[0].clientY-touchStartY;
+    touchClone.style.transform='translateY('+dy+'px)';
+    // find target
+    const elY=e.touches[0].clientY;
+    const siblings=[...el.parentElement.querySelectorAll('.sal-item')];
+    siblings.forEach((s,si)=>{
+      const r=s.getBoundingClientRect();
+      if(elY>r.top&&elY<r.bottom){ touchTargetIdx=si; s.classList.add('drag-over');}
+      else s.classList.remove('drag-over');
+    });
+  },{passive:false});
+
+  el.addEventListener('touchend', ()=>{
+    if(!touchClone) return;
+    touchClone.remove(); touchClone=null;
+    el.classList.remove('dragging');
+    document.querySelectorAll('.drag-over').forEach(e=>e.classList.remove('drag-over'));
+    if(dragSec===sec&&touchTargetIdx!==null&&touchTargetIdx!==dragIdx){
+      const d=STATE.salaryData[STATE.salaryMonth];
+      const arr=d[sec];
+      const moved=arr.splice(dragIdx,1)[0];
+      arr.splice(touchTargetIdx,0,moved);
+      triggerSave(); renderPage();
+    }
+    dragSec=null; dragIdx=null; touchTargetIdx=null;
+  });
+
+  return el;
+}
+
+function mkSalBlock(title, color, bg, border, items, sec, sign) {
+  return h('div',{class:'sal-section',style:'background:'+bg+';border:1px solid '+border},
+    h('div',{class:'sal-section-header'},
+      h('span',{style:'font-size:12px;font-weight:700;color:'+color},title),
+      h('span',{style:'font-family:monospace;font-size:13px;font-weight:600;color:'+color},sign+' NT$ '+fmt(sumItems(items)))
+    ),
+    ...items.map((item,idx)=>mkSalItem(item,sec,idx,items)),
+    h('button',{class:'add-item-btn',style:'color:'+color+';border-color:'+border,onclick(){
+      const d=STATE.salaryData[STATE.salaryMonth]||(STATE.salaryData[STATE.salaryMonth]=defSalaryMonth());
+      d[sec].push(newItem(sec));
+      triggerSave();renderPage();
+    }},'+ 新增項目')
+  );
+}
+
+function renderSalary() {
+  const monthList = getMonthList();
+  const mk2 = STATE.salaryMonth;
+  if (!STATE.salaryData[mk2]) STATE.salaryData[mk2]=defSalaryMonth();
+  const d = STATE.salaryData[mk2];
+
+  // migrate old data format
+  if (!d.taxAdd) d.taxAdd=DEF_TAX_ADD.map(i=>({...i}));
+  if (!d.taxDed) d.taxDed=DEF_TAX_DED.map(i=>({...i}));
+  if (!d.exempt) d.exempt=DEF_EXEMPT.map(i=>({...i}));
+  if (!d.other)  d.other =DEF_OTHER.map(i=>({...i}));
+
+  const sumTaxAdd = sumItems(d.taxAdd);
+  const sumTaxDed = sumItems(d.taxDed);
+  const taxableIncome = Math.max(0, sumTaxAdd - sumTaxDed);
+  const sumExempt = sumItems(d.exempt);
+  const sumOther  = sumItems(d.other);
+  const totalSalary = taxableIncome + sumExempt - sumOther;
+  const wt = calcWT(taxableIncome);
+  const w5 = calc5(taxableIncome);
+
+  const configRow = h('div',{class:'config-row'},
+    h('div',{class:'config-group'},
+      h('label',{class:'config-label'},'薪資月份'),
+      h('select',{class:'styled',onchange(e){STATE.salaryMonth=e.target.value;renderPage();}},
+        ...monthList.map(m=>Object.assign(h('option',{value:m.key},m.label),{selected:m.key===mk2}))
+      )
+    ),
+    h('div',{class:'stat-chips'},
+      h('div',{class:'stat-chip'},h('span',{class:'stat-n',style:'color:#6dd6a0;font-size:11px'},'實領')),
+      h('div',{class:'stat-div'}),
+      h('div',{class:'stat-chip'},h('span',{class:'stat-n',style:'color:#6dd6a0'},'NT$'+fmt(totalSalary)))
+    )
+  );
+
+  const summaryCard = h('div',{class:'tax-card'},
+    h('div',{class:'tax-card-title'},'當月薪資試算'),
+    h('div',{class:'tax-grid'},
+      h('div',{class:'tax-item'},h('span',{class:'tax-label'},'應稅加項'),h('span',{class:'tax-val',style:'color:#f0a060'},'NT$ '+fmt(sumTaxAdd))),
+      h('div',{class:'tax-item'},h('span',{class:'tax-label'},'應稅減項'),h('span',{class:'tax-val',style:'color:#e07070'},'− NT$ '+fmt(sumTaxDed))),
+      h('div',{class:'tax-item'},h('span',{class:'tax-label'},'應稅所得淨額'),h('span',{class:'tax-val',style:'color:#f0c060'},'NT$ '+fmt(taxableIncome))),
+      h('div',{class:'tax-item'},h('span',{class:'tax-label'},'免稅所得'),h('span',{class:'tax-val',style:'color:#60d0a0'},'NT$ '+fmt(sumExempt))),
+      h('div',{class:'tax-item'},h('span',{class:'tax-label'},'其他代扣'),h('span',{class:'tax-val',style:'color:#e07070'},'− NT$ '+fmt(sumOther))),
+      h('div',{class:'tax-item',style:'grid-column:1/-1;border-top:1px solid #2a2a2a;padding-top:12px;display:flex;flex-direction:column;gap:4px'},
+        h('span',{class:'tax-label',style:'font-weight:700;color:#ccc'},'每月實領總薪資'),
+        h('span',{class:'tax-val',style:'font-size:20px;color:#6dd6a0'},'NT$ '+fmt(totalSalary))
+      )
+    ),
+    h('div',{class:'withhold-box'},
+      h('div',{class:'withhold-title'},'應稅所得預扣稅試算（應稅淨額 NT$'+fmt(taxableIncome)+'）'),
+      h('div',{class:'withhold-row'},
+        h('div',{class:'withhold-method'},
+          h('div',{class:'wm-label'},'📋 按薪資所得扣繳稅額表'),
+          h('div',{class:'wm-amt'},'預扣 NT$ '+fmt(wt)),
+          h('div',{class:'wm-takehome'},'稅後實領 ≈ NT$ '+fmt(totalSalary-wt))
+        ),
+        h('div',{class:'withhold-div'}),
+        h('div',{class:'withhold-method'},
+          h('div',{class:'wm-label'},'📊 固定 5% 預扣'),
+          h('div',{class:'wm-amt'},'預扣 NT$ '+fmt(w5)),
+          h('div',{class:'wm-takehome'},'稅後實領 ≈ NT$ '+fmt(totalSalary-w5))
+        )
+      ),
+      h('div',{class:'withhold-note'},'※ 應稅淨額未超過 NT$84,501 免扣繳｜資料僅供參考')
+    )
+  );
+
+  const grid = h('div',{class:'salary-grid'},
+    mkSalBlock('應稅加項','#f0a060','rgba(240,160,96,0.08)','rgba(240,160,96,0.25)',d.taxAdd,'taxAdd','+'),
+    mkSalBlock('應稅減項','#e07070','rgba(224,112,112,0.08)','rgba(224,112,112,0.25)',d.taxDed,'taxDed','-'),
+    mkSalBlock('免稅項目','#60d0a0','rgba(96,208,160,0.08)','rgba(96,208,160,0.25)',d.exempt,'exempt','+'),
+    mkSalBlock('其他代扣','#8888cc','rgba(136,136,204,0.08)','rgba(136,136,204,0.25)',d.other,'other','-')
+  );
+
+  return h('div',{class:'page'},configRow,summaryCard,grid);
+}
+
+
+
+// ══════════════════════════════════════════════
+// PAGE: ANNUAL + CHART
+// ══════════════════════════════════════════════
+function renderChart(chartRows) {
+  const W=320,H=150,PL=46,PR=14,PT=14,PB=28;
+  const IW=W-PL-PR,IH=H-PT-PB;
+  const MONTHS=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const filled=chartRows.filter(r=>r.net!==null);
+  if (!filled.length) return h('div',{class:'empty'},'尚無月薪資料');
+
+  const vals=filled.map(r=>r.net);
+  const minV=Math.min(...vals),maxV=Math.max(...vals);
+  const rng=maxV-minV,pad=rng>0?rng*0.15:maxV*0.1||1000;
+  const yMin=Math.max(0,minV-pad),yMax=maxV+pad;
+  const xP=m=>PL+((m-1)/11)*IW;
+  const yP=v=>PT+IH-((v-yMin)/(yMax-yMin))*IH;
+  const fY=v=>v>=10000?Math.round(v/1000)+'k':String(Math.round(v));
+
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox','0 0 '+W+' '+H);
+  svg.setAttribute('class','chart');
+
+  // grid
+  [yMin,(yMin+yMax)/2,yMax].forEach(v=>{
+    const y=yP(v);
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',PL);line.setAttribute('y1',y);line.setAttribute('x2',W-PR);line.setAttribute('y2',y);
+    line.setAttribute('stroke','#1e1e1e');line.setAttribute('stroke-width','1');
+    svg.appendChild(line);
+    const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x',PL-4);txt.setAttribute('y',y+4);txt.setAttribute('text-anchor','end');
+    txt.setAttribute('fill','#444');txt.setAttribute('font-size','9');txt.setAttribute('font-family','monospace');
+    txt.textContent=fY(v);
+    svg.appendChild(txt);
+  });
+
+  // segments
+  let seg=[];
+  const segs=[];
+  chartRows.forEach(r=>{
+    if(r.net!==null){seg.push(r);}
+    else{if(seg.length){segs.push(seg);seg=[];}}
+  });
+  if(seg.length)segs.push(seg);
+
+  segs.forEach(sg=>{
+    const coords=sg.map(r=>xP(r.month)+','+yP(r.net)).join(' ');
+    const fx=xP(sg[0].month),lx=xP(sg[sg.length-1].month),bot=PT+IH;
+    const poly=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    poly.setAttribute('points',fx+','+bot+' '+coords+' '+lx+','+bot);
+    poly.setAttribute('fill','rgba(109,214,160,0.07)');
+    svg.appendChild(poly);
+    const pline=document.createElementNS('http://www.w3.org/2000/svg','polyline');
+    pline.setAttribute('points',coords);pline.setAttribute('fill','none');
+    pline.setAttribute('stroke','#6dd6a0');pline.setAttribute('stroke-width','1.8');
+    pline.setAttribute('stroke-linejoin','round');pline.setAttribute('stroke-linecap','round');
+    svg.appendChild(pline);
+  });
+
+  // dots + tooltip
+  let tipEl=null;
+  chartRows.forEach(r=>{
+    if(r.net===null)return;
+    const cx=xP(r.month),cy=yP(r.net);
+    const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',cx);c.setAttribute('cy',cy);c.setAttribute('r','3.5');
+    c.setAttribute('fill','#6dd6a0');c.setAttribute('stroke','#0a0a0a');c.setAttribute('stroke-width','1.5');
+    svg.appendChild(c);
+    // hit area
+    const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x',cx-14);rect.setAttribute('y',PT);rect.setAttribute('width','28');rect.setAttribute('height',IH+PB);
+    rect.setAttribute('fill','transparent');
+    const showTip=()=>{
+      if(tipEl)svg.removeChild(tipEl);
+      const tw=96,th=40,tx=Math.min(Math.max(cx-tw/2,PL),W-PR-tw),ty=cy-th-10;
+      tipEl=document.createElementNS('http://www.w3.org/2000/svg','g');
+      const bg2=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      bg2.setAttribute('x',tx);bg2.setAttribute('y',ty);bg2.setAttribute('width',tw);bg2.setAttribute('height',th);
+      bg2.setAttribute('rx','5');bg2.setAttribute('fill','#1a1a1a');bg2.setAttribute('stroke','#2a2a2a');
+      const t1=document.createElementNS('http://www.w3.org/2000/svg','text');
+      t1.setAttribute('x',tx+tw/2);t1.setAttribute('y',ty+14);t1.setAttribute('text-anchor','middle');
+      t1.setAttribute('fill','#aaa');t1.setAttribute('font-size','9');t1.textContent=r.month+'月 經常性收入';
+      const t2=document.createElementNS('http://www.w3.org/2000/svg','text');
+      t2.setAttribute('x',tx+tw/2);t2.setAttribute('y',ty+29);t2.setAttribute('text-anchor','middle');
+      t2.setAttribute('fill','#6dd6a0');t2.setAttribute('font-size','12');t2.setAttribute('font-weight','600');
+      t2.textContent='NT$ '+Math.round(r.net).toLocaleString('zh-TW');
+      tipEl.appendChild(bg2);tipEl.appendChild(t1);tipEl.appendChild(t2);
+      svg.appendChild(tipEl);
+    };
+    const hideTip=()=>{if(tipEl){svg.removeChild(tipEl);tipEl=null;}};
+    rect.addEventListener('mouseenter',showTip);
+    rect.addEventListener('mouseleave',hideTip);
+    rect.addEventListener('touchstart',e=>{e.preventDefault();showTip();});
+    rect.addEventListener('touchend',()=>setTimeout(hideTip,1800));
+    svg.appendChild(rect);
+  });
+
+  // x labels
+  chartRows.forEach((r,i)=>{
+    if(i%2!==0&&i!==11)return;
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',xP(r.month));t.setAttribute('y',H-4);t.setAttribute('text-anchor','middle');
+    t.setAttribute('fill','#444');t.setAttribute('font-size','9');
+    t.textContent=MONTHS[r.month-1];
+    svg.appendChild(t);
+  });
+
+  return svg;
+}
+
+function renderAnnual() {
+  const year=new Date().getFullYear();
+  let tTax=0,tNet=0,tW5=0,tWt=0;
+  const rows=[],chartRows=[];
+  for(let m=1;m<=12;m++){
+    const key=mk(year,m),d=STATE.salaryData[key];
+    if(d){
+      // support both old and new data format
+      const taxAdd=d.taxAdd||d.a||[];
+      const taxDed=d.taxDed||[];
+      const exempt=d.exempt||d.b||[];
+      const other=d.other||d.c||[];
+      const sumTaxAdd=sumItems(taxAdd),sumTaxDed=sumItems(taxDed);
+      const taxable=Math.max(0,sumTaxAdd-sumTaxDed);
+      const sumEx=sumItems(exempt),sumOth=sumItems(other);
+      const net=taxable+sumEx-sumOth;
+      const wt=calcWT(taxable),w5=calc5(taxable);
+      tTax+=taxable;tNet+=net;tW5+=w5;tWt+=wt;
+      rows.push({month:m,key,a:taxable,b:sumEx,c:sumOth,net,wt,w5});
+      // chart: actual net = taxable + exempt - other deductions
+      const chartNet = net;
+      chartRows.push({month:m,net:chartNet});
+    } else {
+      chartRows.push({month:m,net:null}); // no data this month
+    }
+  }
+  const annTax=calcAnnualTax(tTax);
+  const refundT=tWt-annTax, refund5=tW5-annTax;
+
+  const header = h('div',{class:'annual-header'},
+    h('div',{class:'annual-year'},year+' 年度'),
+    h('div',{class:'annual-sub'},'累積區間 1/1 ～ 12/31｜單身、無扶養親屬')
+  );
+
+  const cards = h('div',{class:'annual-cards'},
+    h('div',{class:'annual-card'},h('div',{class:'annual-card-label'},'年度應稅所得'),h('div',{class:'annual-card-val',style:'color:#f0a060'},'NT$ '+fmt(tTax))),
+    h('div',{class:'annual-card'},h('div',{class:'annual-card-label'},'年度實際收入'),h('div',{class:'annual-card-val',style:'color:#6dd6a0'},'NT$ '+fmt(tNet))),
+    h('div',{class:'annual-card'},h('div',{class:'annual-card-label'},'應繳所得稅'),h('div',{class:'annual-card-val',style:'color:#f0c060'},'NT$ '+fmt(annTax)))
+  );
+
+  const mkRefundCol=(title,withheld,refund)=>h('div',{class:'refund-col'},
+    h('div',{class:'refund-col-title'},title),
+    h('div',{class:'refund-row'},h('span',{class:'rl'},'全年預扣稅'),h('span',{class:'rv'},'NT$ '+fmt(withheld))),
+    h('div',{class:'refund-row'},h('span',{class:'rl'},'應繳所得稅'),h('span',{class:'rv'},'NT$ '+fmt(annTax))),
+    h('div',{class:'refund-row refund-sep'},
+      h('span',{class:'rl',style:'font-weight:700;color:#ccc'},refund>=0?'🎉 可退稅':'⚠️ 需補繳'),
+      h('span',{class:'rv',style:'font-size:15px;font-weight:700;color:'+(refund>=0?'#6dd6a0':'#e07070')},'NT$ '+fmt(Math.abs(refund)))
+    )
+  );
+
+  const refundCard = h('div',{class:'refund-card'},
+    h('div',{class:'refund-title'},'明年報稅試算（'+(year+1)+' 年 5 月申報）'),
+    h('div',{class:'refund-grid'},
+      mkRefundCol('📋 按扣繳稅額表',tWt,refundT),
+      mkRefundCol('📊 5% 固定預扣',tW5,refund5)
+    )
+  );
+
+  const deductCard = h('div',{class:'deduct-card'},
+    h('div',{class:'deduct-title'},'扣除額明細（2024 年度）'),
+    h('div',{class:'deduct-row'},h('span',{class:'rl'},'免稅額（單身）'),h('span',{class:'rv'},'NT$ '+fmt(97000))),
+    h('div',{class:'deduct-row'},h('span',{class:'rl'},'標準扣除額'),h('span',{class:'rv'},'NT$ '+fmt(131000))),
+    h('div',{class:'deduct-row'},h('span',{class:'rl'},'薪資所得特別扣除額'),h('span',{class:'rv'},'NT$ '+fmt(218000))),
+    h('div',{class:'deduct-row deduct-sep'},h('span',{class:'rl'},'合計扣除'),h('span',{class:'rv',style:'color:#f0c060'},'NT$ '+fmt(DEDUCTION))),
+    h('div',{class:'deduct-note'},'應稅所得 NT$'+fmt(tTax)+' − 扣除額 NT$'+fmt(DEDUCTION)+' = 綜合所得淨額 NT$'+fmt(Math.max(0,tTax-DEDUCTION)))
+  );
+
+  let tableEl;
+  if(rows.length===0){
+    tableEl=h('div',{class:'empty'},'尚無薪資資料，請先至「薪資單」頁面填寫各月薪資');
+  } else {
+    const headRow=h('div',{class:'ann-head'},
+      h('span',{style:'width:36px;flex-shrink:0'},'月份'),
+      h('span',{style:'flex:1;text-align:right'},'應稅淨額'),
+      h('span',{style:'width:76px;text-align:right'},'實領'),
+      h('span',{style:'width:76px;text-align:right'},'預扣(表)'),
+      h('span',{style:'width:72px;text-align:right'},'預扣(5%)')
+    );
+    const dataRows=rows.map(r=>h('div',{class:'ann-row'},
+      h('span',{style:'width:36px;flex-shrink:0;color:#aaa;font-size:12px;font-family:monospace'},r.month+'月'),
+      h('span',{style:'flex:1;text-align:right;font-family:monospace;font-size:12px;color:#f0a060'},fmt(r.a)),
+      h('span',{style:'width:76px;text-align:right;font-family:monospace;font-size:12px;color:#6dd6a0'},fmt(r.net)),
+      h('span',{style:'width:76px;text-align:right;font-family:monospace;font-size:12px;color:#e07070'},fmt(r.wt)),
+      h('span',{style:'width:72px;text-align:right;font-family:monospace;font-size:12px;color:#e07070'},fmt(r.w5))
+    ));
+    tableEl=h('div',{class:'annual-table'},headRow,...dataRows);
+  }
+
+  const chartCard = h('div',{class:'chart-card'},
+    h('div',{class:'chart-header'},
+      h('div',{class:'chart-title'},'每月收入趨勢'),
+      h('div',{class:'chart-sub'},'每月實際收入（含所有項目）')
+    ),
+    rows.length>0 ? renderChart(chartRows) : h('div',{class:'empty'},'尚無薪資資料')
+  );
+
+  return h('div',{class:'page'},header,cards,refundCard,deductCard,tableEl,chartCard,
+    h('div',{class:'rate-note'},'所得稅稅率：5%／12%／20%／30%／40%｜依所得淨額累進課稅｜資料僅供參考')
+  );
+}
+
+
+// ══════════════════════════════════════════════
+// PAGE: EXPENSE
+// ══════════════════════════════════════════════
+function renderExpenseLineChart() {
+  const monthList = getMonthList().reverse(); // oldest first
+  const dataMonths = monthList.filter(m => STATE.expenseData[m.key]);
+  if (dataMonths.length < 2) return h('div',{class:'empty'},'至少需要 2 個月的資料才能顯示趨勢');
+
+  const W = 320, H = 160, PL = 50, PR = 14, PT = 14, PB = 28;
+  const IW = W - PL - PR, IH = H - PT - PB;
+  const vals = dataMonths.map(m => {
+    const d = STATE.expenseData[m.key] || {};
+    return EXP_CATS.reduce((s,c) => s + (Number(d[c.id])||0), 0);
+  });
+  const minV = Math.min(...vals), maxV = Math.max(...vals);
+  const pad = (maxV - minV || 1) * 0.15;
+  const yMin = Math.max(0, minV - pad), yMax = maxV + pad;
+  const xP = i => PL + (i / (dataMonths.length - 1)) * IW;
+  const yP = v => PT + IH - ((v - yMin) / (yMax - yMin)) * IH;
+  const fY = v => v >= 10000 ? Math.round(v/1000) + 'k' : fmt(v);
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox','0 0 ' + W + ' ' + H);
+  svg.setAttribute('class','chart');
+
+  // grid
+  [yMin,(yMin+yMax)/2,yMax].forEach(v => {
+    const y = yP(v);
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',PL); line.setAttribute('y1',y);
+    line.setAttribute('x2',W-PR); line.setAttribute('y2',y);
+    line.setAttribute('stroke','#1e1e1e'); line.setAttribute('stroke-width','1');
+    svg.appendChild(line);
+    const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x',PL-4); txt.setAttribute('y',y+4);
+    txt.setAttribute('text-anchor','end'); txt.setAttribute('fill','#444');
+    txt.setAttribute('font-size','9'); txt.setAttribute('font-family','monospace');
+    txt.textContent = fY(v); svg.appendChild(txt);
+  });
+
+  // area + line
+  const coords = dataMonths.map((_,i) => xP(i)+','+yP(vals[i])).join(' ');
+  const area = PL+','+(PT+IH)+' '+coords+' '+xP(dataMonths.length-1)+','+(PT+IH);
+  const poly = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+  poly.setAttribute('points',area); poly.setAttribute('fill','rgba(224,112,112,0.07)');
+  svg.appendChild(poly);
+  const pline = document.createElementNS('http://www.w3.org/2000/svg','polyline');
+  pline.setAttribute('points',coords); pline.setAttribute('fill','none');
+  pline.setAttribute('stroke','#e07070'); pline.setAttribute('stroke-width','1.8');
+  pline.setAttribute('stroke-linejoin','round'); pline.setAttribute('stroke-linecap','round');
+  svg.appendChild(pline);
+
+  // dots + tooltip
+  let tipEl = null;
+  dataMonths.forEach((m,i) => {
+    const cx = xP(i), cy = yP(vals[i]);
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',cx); c.setAttribute('cy',cy); c.setAttribute('r','3.5');
+    c.setAttribute('fill','#e07070'); c.setAttribute('stroke','#0a0a0a'); c.setAttribute('stroke-width','1.5');
+    svg.appendChild(c);
+    const hit = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    hit.setAttribute('x',cx-14); hit.setAttribute('y',PT);
+    hit.setAttribute('width','28'); hit.setAttribute('height',IH+PB);
+    hit.setAttribute('fill','transparent');
+    const showTip = () => {
+      if(tipEl) svg.removeChild(tipEl);
+      const tw=90, th=38, tx=Math.min(Math.max(cx-tw/2,PL),W-PR-tw), ty=cy-th-8;
+      tipEl = document.createElementNS('http://www.w3.org/2000/svg','g');
+      const bg = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      bg.setAttribute('x',tx); bg.setAttribute('y',ty); bg.setAttribute('width',tw); bg.setAttribute('height',th);
+      bg.setAttribute('rx','5'); bg.setAttribute('fill','#1a1a1a'); bg.setAttribute('stroke','#2a2a2a');
+      const t1 = document.createElementNS('http://www.w3.org/2000/svg','text');
+      t1.setAttribute('x',tx+tw/2); t1.setAttribute('y',ty+13); t1.setAttribute('text-anchor','middle');
+      t1.setAttribute('fill','#aaa'); t1.setAttribute('font-size','9'); t1.textContent=m.label;
+      const t2 = document.createElementNS('http://www.w3.org/2000/svg','text');
+      t2.setAttribute('x',tx+tw/2); t2.setAttribute('y',ty+28); t2.setAttribute('text-anchor','middle');
+      t2.setAttribute('fill','#e07070'); t2.setAttribute('font-size','12'); t2.setAttribute('font-weight','600');
+      t2.textContent = 'NT$ '+fmt(vals[i]);
+      tipEl.appendChild(bg); tipEl.appendChild(t1); tipEl.appendChild(t2); svg.appendChild(tipEl);
+    };
+    hit.addEventListener('mouseenter', showTip);
+    hit.addEventListener('mouseleave', ()=>{ if(tipEl){svg.removeChild(tipEl);tipEl=null;} });
+    hit.addEventListener('touchstart', e=>{e.preventDefault();showTip();},{passive:false});
+    hit.addEventListener('touchend', ()=>setTimeout(()=>{if(tipEl){svg.removeChild(tipEl);tipEl=null;}},1800));
+    svg.appendChild(hit);
+  });
+
+  // x labels (show every 3 months or fewer)
+  const step = dataMonths.length > 12 ? Math.ceil(dataMonths.length/8) : (dataMonths.length > 6 ? 2 : 1);
+  dataMonths.forEach((m,i) => {
+    if (i % step !== 0 && i !== dataMonths.length-1) return;
+    const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x',xP(i)); txt.setAttribute('y',H-4);
+    txt.setAttribute('text-anchor','middle'); txt.setAttribute('fill','#444'); txt.setAttribute('font-size','8');
+    txt.textContent = m.key.slice(2).replace('-','/'); svg.appendChild(txt);
+  });
+
+  return svg;
+}
+
+function renderExpenseBarChart() {
+  const mk2 = STATE.expenseMonth;
+  const d = STATE.expenseData[mk2] || {};
+  const items = EXP_CATS.map(c => ({...c, val: Number(d[c.id])||0})).filter(c => c.val > 0).sort((a,b)=>b.val-a.val);
+  if (!items.length) return h('div',{class:'empty'},'本月尚無花費資料');
+
+  const total = items.reduce((s,c)=>s+c.val,0);
+  const maxV = items[0].val;
+  const W = 320, barH = 20, gap = 6, PL = 60, PR = 60, labelW = PL, valW = PR;
+  const H = items.length * (barH + gap) + 10;
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox','0 0 '+W+' '+H);
+  svg.setAttribute('class','bar-chart');
+  svg.style.width='100%'; svg.style.height=H+'px';
+
+  items.forEach((item,i) => {
+    const y = i * (barH + gap) + 5;
+    const barW = Math.max(2, ((item.val / maxV) * (W - PL - PR)));
+    // label
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lbl.setAttribute('x',PL-6); lbl.setAttribute('y',y+barH/2+4);
+    lbl.setAttribute('text-anchor','end'); lbl.setAttribute('fill','#aaa'); lbl.setAttribute('font-size','10');
+    lbl.textContent = item.name; svg.appendChild(lbl);
+    // bar bg
+    const barBg = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    barBg.setAttribute('x',PL); barBg.setAttribute('y',y);
+    barBg.setAttribute('width',W-PL-PR); barBg.setAttribute('height',barH);
+    barBg.setAttribute('fill','#1a1a1a'); barBg.setAttribute('rx','4'); svg.appendChild(barBg);
+    // bar fill
+    const bar = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    bar.setAttribute('x',PL); bar.setAttribute('y',y);
+    bar.setAttribute('width',barW); bar.setAttribute('height',barH);
+    bar.setAttribute('fill',item.color); bar.setAttribute('rx','4'); bar.setAttribute('opacity','0.8');
+    svg.appendChild(bar);
+    // value
+    const val = document.createElementNS('http://www.w3.org/2000/svg','text');
+    val.setAttribute('x',PL+barW+6); val.setAttribute('y',y+barH/2+4);
+    val.setAttribute('fill','#888'); val.setAttribute('font-size','9'); val.setAttribute('font-family','monospace');
+    val.textContent = fmt(item.val); svg.appendChild(val);
+  });
+
+  return svg;
+}
+
+// ── Expense drag state ──
+let expDragIdx = null;
+
+function showCatPicker(item, onSelect) {
+  const overlay = document.createElement('div');
+  overlay.className = 'cat-picker-overlay';
+  const panel = document.createElement('div');
+  panel.className = 'cat-picker-panel';
+  const title = document.createElement('div');
+  title.className = 'cat-picker-title';
+  title.textContent = '選擇類別';
+  panel.appendChild(title);
+  const grid = document.createElement('div');
+  grid.className = 'cat-picker-grid';
+  EXP_CATS.forEach(cat => {
+    const btn = document.createElement('div');
+    btn.className = 'cat-picker-item' + (cat.id === item.catId ? ' selected' : '');
+    btn.style.borderColor = cat.id === item.catId ? cat.color : '#2a2a2a';
+    btn.style.background = cat.id === item.catId ? cat.color + '22' : '#111';
+    const emoji = document.createElement('span');
+    emoji.className = 'cat-emoji';
+    emoji.textContent = cat.emoji;
+    const label = document.createElement('span');
+    label.className = 'cat-label';
+    label.style.color = cat.color;
+    label.textContent = cat.name;
+    btn.appendChild(emoji);
+    btn.appendChild(label);
+    btn.addEventListener('click', () => {
+      onSelect(cat);
+      document.body.removeChild(overlay);
+    });
+    grid.appendChild(btn);
+  });
+  panel.appendChild(grid);
+  overlay.appendChild(panel);
+  overlay.addEventListener('click', e => { if(e.target === overlay) document.body.removeChild(overlay); });
+  document.body.appendChild(overlay);
+}
+
+function mkExpRow(item, idx, items, mk2) {
+  const cat = EXP_CATS.find(c=>c.id===item.catId) || EXP_CATS[0];
+  const isSaving = item.catId === SAVING_CAT_ID;
+  const el = h('div',{class:'sal-item',draggable:'true',
+    style:'border-left:3px solid '+cat.color+(isSaving?';background:rgba(240,208,96,0.06)':'')},
+    h('div',{class:'sal-item-row1'},
+      h('div',{class:'drag-handle'},h('span'),h('span'),h('span')),
+      // emoji category button
+      h('button',{
+        style:'background:'+cat.color+'22;border:1px solid '+cat.color+'66;border-radius:8px;padding:4px 8px;cursor:pointer;display:flex;align-items:center;gap:4px;flex-shrink:0;min-width:72px;',
+        onclick(){
+          showCatPicker(item, cat2=>{
+            item.catId = cat2.id;
+            if(item.name === cat.name) item.name = cat2.name;
+            triggerSave(); renderPage();
+          });
+        }
+      },
+        h('span',{style:'font-size:16px'},cat.emoji),
+        h('span',{style:'font-size:11px;color:'+cat.color},cat.name)
+      ),
+      // editable name
+      h('input',{class:'sal-name-input',type:'text',placeholder:'備註...',value:item.name,
+        style:'flex:1;min-width:0;',
+        oninput(e){item.name=e.target.value;triggerSave();}
+      }),
+      h('button',{class:'sal-del-btn',onclick(){
+        STATE.expenseData[mk2]=items.filter((_,i)=>i!==idx);
+        triggerSave();renderPage();
+      }},'×')
+    ),
+    h('div',{class:'sal-item-row2'},
+      h('span',{class:'sal-nt',style:isSaving?'color:#f0d060':''},(isSaving?'💰 ':'')+'NT$'),
+      h('input',{class:'sal-amt-input',type:'number',inputmode:'decimal',placeholder:'',value:item.amount,
+        style:isSaving?'color:#f0d060':'',
+        oninput(e){item.amount=e.target.value;triggerSave();}
+      })
+    )
+  );
+
+  // Desktop drag
+  el.addEventListener('dragstart', e=>{expDragIdx=idx;el.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
+  el.addEventListener('dragend', ()=>el.classList.remove('dragging'));
+  el.addEventListener('dragover', e=>{e.preventDefault();el.classList.add('drag-over');});
+  el.addEventListener('dragleave', ()=>el.classList.remove('drag-over'));
+  el.addEventListener('drop', e=>{
+    e.preventDefault();el.classList.remove('drag-over');
+    if(expDragIdx===null||expDragIdx===idx)return;
+    const arr=STATE.expenseData[mk2];
+    const moved=arr.splice(expDragIdx,1)[0];
+    arr.splice(idx,0,moved);
+    expDragIdx=null;triggerSave();renderPage();
+  });
+
+  // Touch drag
+  let touchStartY=0,touchClone=null,touchTargetIdx=null;
+  el.addEventListener('touchstart',e=>{
+    if(!e.target.closest('.drag-handle'))return;
+    e.preventDefault();touchStartY=e.touches[0].clientY;expDragIdx=idx;
+    el.classList.add('dragging');
+    touchClone=el.cloneNode(true);
+    const r=el.getBoundingClientRect();
+    touchClone.style.cssText='position:fixed;z-index:9999;left:'+r.left+'px;top:'+r.top+'px;width:'+el.offsetWidth+'px;opacity:0.85;pointer-events:none;';
+    document.body.appendChild(touchClone);
+  },{passive:false});
+  el.addEventListener('touchmove',e=>{
+    if(!touchClone)return;e.preventDefault();
+    const dy=e.touches[0].clientY-touchStartY;
+    touchClone.style.transform='translateY('+dy+'px)';
+    const elY=e.touches[0].clientY;
+    el.parentElement.querySelectorAll('.sal-item').forEach((s,si)=>{
+      const r2=s.getBoundingClientRect();
+      if(elY>r2.top&&elY<r2.bottom){touchTargetIdx=si;s.classList.add('drag-over');}
+      else s.classList.remove('drag-over');
+    });
+  },{passive:false});
+  el.addEventListener('touchend',()=>{
+    if(!touchClone)return;
+    touchClone.remove();touchClone=null;
+    el.classList.remove('dragging');
+    document.querySelectorAll('.drag-over').forEach(e2=>e2.classList.remove('drag-over'));
+    if(touchTargetIdx!==null&&touchTargetIdx!==expDragIdx){
+      const arr=STATE.expenseData[mk2];
+      const moved=arr.splice(expDragIdx,1)[0];
+      arr.splice(touchTargetIdx,0,moved);
+      triggerSave();renderPage();
+    }
+    expDragIdx=null;touchTargetIdx=null;
+  });
+
+  return el;
+}
+
+function renderExpense() {
+  const monthList = getMonthList();
+  const mk2 = STATE.expenseMonth;
+
+  // ensure array format
+  migrateExpenseMonth(mk2);
+  if (!STATE.expenseData[mk2]) STATE.expenseData[mk2] = [];
+  const items = STATE.expenseData[mk2];
+  const expItems = items.filter(i=>i.catId !== SAVING_CAT_ID);
+  const savItems = items.filter(i=>i.catId === SAVING_CAT_ID);
+  const total = expItems.reduce((s,i)=>s+(Number(i.amount)||0),0);
+  const savTotal = savItems.reduce((s,i)=>s+(Number(i.amount)||0),0);
+
+  const configRow = h('div',{class:'config-row'},
+    h('div',{class:'config-group'},
+      h('label',{class:'config-label'},'花費月份'),
+      h('select',{class:'styled',onchange(e){
+        STATE.expenseMonth=e.target.value;
+        migrateExpenseMonth(e.target.value);
+        renderPage();
+      }},
+        ...monthList.map(m=>Object.assign(h('option',{value:m.key},m.label),{selected:m.key===mk2}))
+      )
+    ),
+    h('div',{class:'stat-chips'},
+      h('div',{class:'stat-chip'},h('span',{class:'stat-n',style:'color:#e07070;font-size:11px'},'支出')),
+      h('div',{class:'stat-div'}),
+      h('div',{class:'stat-chip'},h('span',{class:'stat-n',style:'color:#e07070'},'NT$'+fmt(total))),
+      savTotal>0?[h('div',{class:'stat-div'}),h('div',{class:'stat-chip'},h('span',{class:'stat-n',style:'color:#f0d060;font-size:11px'},'💰 NT$'+fmt(savTotal)))]:null
+    )
+  );
+
+  const subTabs = h('div',{class:'sub-tab-row'},
+    h('button',{class:'sub-tab'+(STATE.expenseSubTab==='input'?' active':''),onclick(){STATE.expenseSubTab='input';renderPage();}},'📝 輸入花費'),
+    h('button',{class:'sub-tab'+(STATE.expenseSubTab==='chart'?' active':''),onclick(){STATE.expenseSubTab='chart';renderPage();}},'📊 消費分析'),
+    h('button',{class:'sub-tab'+(STATE.expenseSubTab==='trend'?' active':''),onclick(){STATE.expenseSubTab='trend';renderPage();}},'📈 歷史趨勢')
+  );
+
+  let mainContent;
+
+  if (STATE.expenseSubTab === 'input') {
+    // summary bar at top
+    const catTotals = {};
+    items.forEach(i=>{ catTotals[i.catId]=(catTotals[i.catId]||0)+(Number(i.amount)||0); });
+    const topCats = Object.entries(catTotals).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+    const summaryCard = total > 0 ? h('div',{class:'exp-total-card'},
+      h('div',{class:'exp-total-row'},
+        h('span',{style:'font-size:13px;font-weight:700;color:#ccc'},'本月總花費'),
+        h('span',{style:'font-size:20px;font-weight:900;color:#e07070;font-family:monospace'},'NT$ '+fmt(total))
+      ),
+      h('div',{style:'margin-top:12px;display:flex;flex-direction:column;gap:6px'},
+        ...topCats.map(([catId,v])=>{
+          const cat=EXP_CATS.find(c=>c.id===catId)||EXP_CATS[EXP_CATS.length-1];
+          const pct=Math.round(v/total*100);
+          return h('div',null,
+            h('div',{style:'display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px'},
+              h('span',{style:'color:'+cat.color},cat.name),
+              h('span',{style:'color:#888;font-family:monospace'},'NT$'+fmt(v)+' ('+pct+'%)')
+            ),
+            h('div',{class:'exp-bar-wrap'},h('div',{class:'exp-bar',style:'width:'+pct+'%;background:'+cat.color+';opacity:0.7'}))
+          );
+        })
+      )
+    ) : null;
+
+    const expListCard = h('div',{class:'sal-section',style:'background:#111;border:1px solid #1e1e1e'},
+      h('div',{class:'sal-section-header'},
+        h('span',{style:'font-size:12px;font-weight:700;color:#e07070'},'💸 花費項目'),
+        h('span',{style:'font-family:monospace;font-size:13px;color:#e07070'},'NT$ '+fmt(total))
+      ),
+      ...expItems.map((item,idx)=>mkExpRow(item,items.indexOf(item),items,mk2)),
+      h('button',{class:'add-item-btn',style:'color:#e07070;border-color:rgba(224,112,112,0.3)',onclick(){
+        STATE.expenseData[mk2].push(newExpItem('other'));
+        triggerSave();renderPage();
+      }},'+ 新增花費')
+    );
+
+    const savListCard = h('div',{class:'sal-section',style:'background:rgba(240,208,96,0.05);border:1px solid rgba(240,208,96,0.25)'},
+      h('div',{class:'sal-section-header'},
+        h('span',{style:'font-size:12px;font-weight:700;color:#f0d060'},'💰 存款項目'),
+        h('span',{style:'font-family:monospace;font-size:13px;color:#f0d060'},'NT$ '+fmt(savTotal))
+      ),
+      ...savItems.map((item,idx)=>mkExpRow(item,items.indexOf(item),items,mk2)),
+      h('button',{class:'add-item-btn',style:'color:#f0d060;border-color:rgba(240,208,96,0.3)',onclick(){
+        STATE.expenseData[mk2].push(newExpItem('saving'));
+        triggerSave();renderPage();
+      }},'+ 新增存款')
+    );
+
+    mainContent = h('div',{style:'display:flex;flex-direction:column;gap:12px'},summaryCard,expListCard,savListCard);
+
+  } else if (STATE.expenseSubTab === 'chart') {
+    // bar chart by category
+    const catTotals2 = {};
+    items.filter(i=>i.catId!==SAVING_CAT_ID).forEach(i=>{ catTotals2[i.catId]=(catTotals2[i.catId]||0)+(Number(i.amount)||0); });
+    const sorted = Object.entries(catTotals2).map(([catId,v])=>{
+      const cat=EXP_CATS.find(c=>c.id===catId)||EXP_CATS[EXP_CATS.length-1];
+      return {...cat,val:v};
+    }).filter(c=>c.val>0).sort((a,b)=>b.val-a.val);
+
+    const barEl = sorted.length>0 ? (()=>{
+      const W=320,barH=20,gap=6,PL=64,PR=64;
+      const H=sorted.length*(barH+gap)+10;
+      const maxV=sorted[0].val;
+      const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+      svg.setAttribute('viewBox','0 0 '+W+' '+H);
+      svg.style.cssText='width:100%;height:'+H+'px;display:block;';
+      sorted.forEach((item,i)=>{
+        const y=i*(barH+gap)+5;
+        const bw=Math.max(2,((item.val/maxV)*(W-PL-PR)));
+        const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
+        lbl.setAttribute('x',PL-6);lbl.setAttribute('y',y+barH/2+4);
+        lbl.setAttribute('text-anchor','end');lbl.setAttribute('fill','#aaa');lbl.setAttribute('font-size','10');
+        lbl.textContent=item.name;svg.appendChild(lbl);
+        const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
+        bg.setAttribute('x',PL);bg.setAttribute('y',y);bg.setAttribute('width',W-PL-PR);bg.setAttribute('height',barH);
+        bg.setAttribute('fill','#1a1a1a');bg.setAttribute('rx','4');svg.appendChild(bg);
+        const bar=document.createElementNS('http://www.w3.org/2000/svg','rect');
+        bar.setAttribute('x',PL);bar.setAttribute('y',y);bar.setAttribute('width',bw);bar.setAttribute('height',barH);
+        bar.setAttribute('fill',item.color);bar.setAttribute('rx','4');bar.setAttribute('opacity','0.8');svg.appendChild(bar);
+        const val=document.createElementNS('http://www.w3.org/2000/svg','text');
+        val.setAttribute('x',PL+bw+6);val.setAttribute('y',y+barH/2+4);
+        val.setAttribute('fill','#888');val.setAttribute('font-size','9');val.setAttribute('font-family','monospace');
+        val.textContent=fmt(item.val);svg.appendChild(val);
+      });
+      return svg;
+    })() : h('div',{class:'empty'},'本月尚無花費資料');
+
+    mainContent = h('div',{style:'display:flex;flex-direction:column;gap:12px'},
+      h('div',{class:'chart-card'},
+        h('div',{class:'chart-header'},
+          h('div',{class:'chart-title'},mk2.replace('-','年')+'月 消費分析'),
+          h('div',{class:'chart-sub'},'依類別合計，金額排序')
+        ),
+        h('div',{class:'bar-chart-wrap'},barEl)
+      )
+    );
+
+  } else {
+    // trend line chart - all months
+    const allMonths = getMonthList().reverse().filter(m=>{
+      const d2=STATE.expenseData[m.key];
+      return d2 && (Array.isArray(d2)?d2.length>0:Object.values(d2).some(v=>Number(v)>0));
+    });
+    const chartData = allMonths.map(m=>{
+      const d2=STATE.expenseData[m.key];
+      const t=Array.isArray(d2)?d2.reduce((s,i)=>s+(Number(i.amount)||0),0):EXP_CATS.reduce((s,c)=>s+(Number(d2[c.id])||0),0);
+      return {month:m,total:t};
+    });
+
+    let lineEl;
+    if(chartData.length<1){
+      lineEl=h('div',{class:'empty'},'尚無花費資料');
+    } else if(chartData.length===1){
+      lineEl=h('div',{class:'empty',style:'color:#aaa'},'僅'+chartData[0].month.label+' NT$'+fmt(chartData[0].total)+'｜需至少 2 個月才顯示趨勢');
+    } else {
+      const W=320,H=160,PL=50,PR=14,PT=14,PB=28;
+      const IW=W-PL-PR,IH=H-PT-PB;
+      const vals=chartData.map(d=>d.total);
+      const minV=Math.min(...vals),maxV=Math.max(...vals);
+      const pad=(maxV-minV||1)*0.15;
+      const yMin=Math.max(0,minV-pad),yMax=maxV+pad;
+      const xP=i=>PL+(i/(chartData.length-1))*IW;
+      const yP=v=>PT+IH-((v-yMin)/(yMax-yMin))*IH;
+      const fY=v=>v>=10000?Math.round(v/1000)+'k':fmt(v);
+      const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+      svg.setAttribute('viewBox','0 0 '+W+' '+H);svg.setAttribute('class','chart');
+      [yMin,(yMin+yMax)/2,yMax].forEach(v=>{
+        const y=yP(v);
+        const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+        line.setAttribute('x1',PL);line.setAttribute('y1',y);line.setAttribute('x2',W-PR);line.setAttribute('y2',y);
+        line.setAttribute('stroke','#1e1e1e');line.setAttribute('stroke-width','1');svg.appendChild(line);
+        const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
+        txt.setAttribute('x',PL-4);txt.setAttribute('y',y+4);txt.setAttribute('text-anchor','end');
+        txt.setAttribute('fill','#444');txt.setAttribute('font-size','9');txt.setAttribute('font-family','monospace');
+        txt.textContent=fY(v);svg.appendChild(txt);
+      });
+      const coords=chartData.map((_,i)=>xP(i)+','+yP(vals[i])).join(' ');
+      const poly=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+      poly.setAttribute('points',PL+','+(PT+IH)+' '+coords+' '+xP(chartData.length-1)+','+(PT+IH));
+      poly.setAttribute('fill','rgba(224,112,112,0.07)');svg.appendChild(poly);
+      const pline=document.createElementNS('http://www.w3.org/2000/svg','polyline');
+      pline.setAttribute('points',coords);pline.setAttribute('fill','none');
+      pline.setAttribute('stroke','#e07070');pline.setAttribute('stroke-width','1.8');
+      pline.setAttribute('stroke-linejoin','round');pline.setAttribute('stroke-linecap','round');svg.appendChild(pline);
+      let tipEl=null;
+      chartData.forEach((d,i)=>{
+        const cx=xP(i),cy=yP(vals[i]);
+        const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+        c.setAttribute('cx',cx);c.setAttribute('cy',cy);c.setAttribute('r','3.5');
+        c.setAttribute('fill','#e07070');c.setAttribute('stroke','#0a0a0a');c.setAttribute('stroke-width','1.5');svg.appendChild(c);
+        const hit=document.createElementNS('http://www.w3.org/2000/svg','rect');
+        hit.setAttribute('x',cx-14);hit.setAttribute('y',PT);hit.setAttribute('width','28');hit.setAttribute('height',IH+PB);
+        hit.setAttribute('fill','transparent');
+        const showTip=()=>{
+          if(tipEl)svg.removeChild(tipEl);
+          const tw=90,th=38,tx=Math.min(Math.max(cx-tw/2,PL),W-PR-tw),ty=cy-th-8;
+          tipEl=document.createElementNS('http://www.w3.org/2000/svg','g');
+          const bg2=document.createElementNS('http://www.w3.org/2000/svg','rect');
+          bg2.setAttribute('x',tx);bg2.setAttribute('y',ty);bg2.setAttribute('width',tw);bg2.setAttribute('height',th);
+          bg2.setAttribute('rx','5');bg2.setAttribute('fill','#1a1a1a');bg2.setAttribute('stroke','#2a2a2a');
+          const t1=document.createElementNS('http://www.w3.org/2000/svg','text');
+          t1.setAttribute('x',tx+tw/2);t1.setAttribute('y',ty+13);t1.setAttribute('text-anchor','middle');
+          t1.setAttribute('fill','#aaa');t1.setAttribute('font-size','9');t1.textContent=d.month.label;
+          const t2=document.createElementNS('http://www.w3.org/2000/svg','text');
+          t2.setAttribute('x',tx+tw/2);t2.setAttribute('y',ty+28);t2.setAttribute('text-anchor','middle');
+          t2.setAttribute('fill','#e07070');t2.setAttribute('font-size','12');t2.setAttribute('font-weight','600');
+          t2.textContent='NT$ '+fmt(vals[i]);
+          tipEl.appendChild(bg2);tipEl.appendChild(t1);tipEl.appendChild(t2);svg.appendChild(tipEl);
+        };
+        hit.addEventListener('mouseenter',showTip);
+        hit.addEventListener('mouseleave',()=>{if(tipEl){svg.removeChild(tipEl);tipEl=null;}});
+        hit.addEventListener('touchstart',e=>{e.preventDefault();showTip();},{passive:false});
+        hit.addEventListener('touchend',()=>setTimeout(()=>{if(tipEl){svg.removeChild(tipEl);tipEl=null;}},1800));
+        svg.appendChild(hit);
+      });
+      const step=chartData.length>12?Math.ceil(chartData.length/8):1;
+      chartData.forEach((d,i)=>{
+        if(i%step!==0&&i!==chartData.length-1)return;
+        const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
+        txt.setAttribute('x',xP(i));txt.setAttribute('y',H-4);txt.setAttribute('text-anchor','middle');
+        txt.setAttribute('fill','#444');txt.setAttribute('font-size','8');
+        txt.textContent=d.month.key.slice(2).replace('-','/');svg.appendChild(txt);
+      });
+      lineEl=svg;
+    }
+
+    mainContent = h('div',{style:'display:flex;flex-direction:column;gap:12px'},
+      h('div',{class:'chart-card'},
+        h('div',{class:'chart-header'},
+          h('div',{class:'chart-title'},'每月花費趨勢'),
+          h('div',{class:'chart-sub'},'全歷史紀錄')
+        ),
+        lineEl
+      )
+    );
+  }
+
+  return h('div',{class:'page'},configRow,subTabs,mainContent);
+}
+
+// ══════════════════════════════════════════════
+// LOCK SCREEN
+// ══════════════════════════════════════════════
+const LOCK_PWD = '850701';
+let lockBuf = '';
+
+function lockInput(d) {
+  if (lockBuf.length >= 6) return;
+  lockBuf += d;
+  updateLockDots();
+  if (lockBuf.length === 6) {
+    if (lockBuf === LOCK_PWD) {
+      document.getElementById('lock-screen').style.display = 'none';
+      document.getElementById('app').classList.remove('hidden');
+      renderPage();
+    } else {
+      document.getElementById('lock-dots').classList.add('lock-shake');
+      document.querySelectorAll('.lock-dot').forEach(d2=>d2.classList.add('error'));
+      setTimeout(()=>{
+        lockBuf='';
+        document.getElementById('lock-dots').classList.remove('lock-shake');
+        document.querySelectorAll('.lock-dot').forEach(d2=>{d2.classList.remove('error','filled');});
+      }, 700);
+    }
+  }
+}
+function lockDel() {
+  lockBuf = lockBuf.slice(0,-1);
+  updateLockDots();
+}
+function updateLockDots() {
+  document.querySelectorAll('.lock-dot').forEach((d,i)=>{
+    d.classList.toggle('filled', i < lockBuf.length);
+  });
+}
+
+// ══════════════════════════════════════════════
+// PAGE: HOME (DASHBOARD)
+// ══════════════════════════════════════════════
+function getMonthNetIncome(mk2) {
+  const d = STATE.salaryData[mk2];
+  if (!d) return 0;
+  const taxAdd = d.taxAdd||d.a||[], taxDed=d.taxDed||[], exempt=d.exempt||d.b||[], other=d.other||d.c||[];
+  return Math.max(0,sumItems(taxAdd)-sumItems(taxDed))+sumItems(exempt)-sumItems(other);
+}
+
+function getMonthExpense(mk2) {
+  const d = STATE.expenseData[mk2];
+  if (!d) return 0;
+  if (Array.isArray(d)) return d.filter(i=>i.catId!==SAVING_CAT_ID).reduce((s,i)=>s+(Number(i.amount)||0),0);
+  return EXP_CATS.filter(c=>c.id!==SAVING_CAT_ID).reduce((s,c)=>s+(Number(d[c.id])||0),0);
+}
+
+function renderHome() {
+  const curMk = curMK();
+  const year = new Date().getFullYear();
+  const monthIncome = getMonthNetIncome(curMk);
+  const monthExpense = getMonthExpense(curMk);
+  const monthBalance = monthIncome - monthExpense;
+
+  // Year total expense
+  let yearExpense = 0;
+  for(let m=1;m<=12;m++) yearExpense += getMonthExpense(mk(year,m));
+
+  // Cumulative savings: initSavings + all 'saving' category items
+  const initSv = Number(STATE.initSavings)||0;
+  let cumSavings = initSv;
+  const allMonths = getMonthList().reverse(); // oldest first
+  allMonths.forEach(mo => {
+    const d = STATE.expenseData[mo.key];
+    if (!d) return;
+    if (Array.isArray(d)) {
+      d.filter(i=>i.catId===SAVING_CAT_ID).forEach(i=>{ cumSavings += Number(i.amount)||0; });
+    }
+  });
+
+  // Monthly savings data for combo chart
+  const monthlyData = allMonths.filter(mo=>{
+    return getMonthNetIncome(mo.key)>0||getMonthExpense(mo.key)>0;
+  }).map(mo=>({
+    label: mo.key.slice(2).replace('-','/'),
+    income: getMonthNetIncome(mo.key),
+    expense: getMonthExpense(mo.key),
+    saving: getMonthNetIncome(mo.key)-getMonthExpense(mo.key),
+  }));
+
+  // Year expense by category
+  const yearCatTotals = {};
+  for(let m=1;m<=12;m++){
+    const d=STATE.expenseData[mk(year,m)];
+    if(!d) continue;
+    if(Array.isArray(d)){ d.forEach(i=>{ yearCatTotals[i.catId]=(yearCatTotals[i.catId]||0)+(Number(i.amount)||0); }); }
+    else { EXP_CATS.forEach(c=>{ yearCatTotals[c.id]=(yearCatTotals[c.id]||0)+(Number(d[c.id])||0); }); }
+  }
+  const yearCatSorted = Object.entries(yearCatTotals).map(([catId,v])=>{
+    const cat=EXP_CATS.find(c=>c.id===catId)||EXP_CATS[EXP_CATS.length-1];
+    return {...cat,val:v};
+  }).filter(c=>c.val>0).sort((a,b)=>b.val-a.val);
+
+  // ── summary cards ──
+  const summaryCards = h('div',{class:'dash-grid'},
+    h('div',{class:'dash-card accent-green'},
+      h('div',{class:'dash-label'},'當月收入'),
+      h('div',{class:'dash-val',style:'color:#6dd6a0'},'NT$'+fmt(monthIncome)),
+      h('div',{class:'dash-sub'},curMk.replace('-','年')+'月')
+    ),
+    h('div',{class:'dash-card accent-red'},
+      h('div',{class:'dash-label'},'當月支出'),
+      h('div',{class:'dash-val',style:'color:#e07070'},'NT$'+fmt(monthExpense)),
+      h('div',{class:'dash-sub'},curMk.replace('-','年')+'月')
+    ),
+    h('div',{class:'dash-card full',style:'border-color:'+(monthBalance>=0?'#2a4a2a':'#4a2a2a')+';background:'+(monthBalance>=0?'linear-gradient(135deg,#0d1a0d,#0a150a)':'linear-gradient(135deg,#1a0d0d,#150a0a)')},
+      h('div',{class:'dash-label'},'當月餘額（收入 − 支出）'),
+      h('div',{class:'dash-val',style:'font-size:26px;color:'+(monthBalance>=0?'#6dd6a0':'#e07070')},
+        (monthBalance>=0?'+':'')+'NT$'+fmt(monthBalance)
+      )
+    ),
+    h('div',{class:'dash-card full accent-gold'},
+      h('div',{class:'dash-label'},'存款累計總額'),
+      h('div',{class:'dash-val',style:'color:#f0c060'},'NT$'+fmt(cumSavings)),
+      h('div',{style:'display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap'},
+        h('span',{style:'font-size:11px;color:#555'},'起始存款：'),
+        h('input',{
+          type:'number',inputmode:'decimal',placeholder:'0',
+          value:STATE.initSavings,
+          style:'background:#1a1a00;border:1px solid #3a2c00;border-radius:6px;padding:4px 8px;color:#f0c060;font-family:monospace;font-size:13px;width:120px;',
+          oninput(e){STATE.initSavings=e.target.value;triggerSave();}
+        }),
+        h('span',{style:'font-size:11px;color:#555'},'NT$')
+      )
+    ),
+    h('div',{class:'dash-card full accent-red'},
+      h('div',{class:'dash-label'},'年度累計花費（'+year+'年）'),
+      h('div',{class:'dash-val',style:'color:#e07070'},'NT$'+fmt(yearExpense))
+    )
+  );
+
+  // ── combo chart: monthly savings bar + line ──
+  function renderComboChart(data, title, sub, barKey, lineKey, barColor, lineColor) {
+    if(!data.length) return h('div',{class:'empty'},'尚無資料');
+    const W=320,H=160,PL=50,PR=14,PT=16,PB=28,IW=W-PL-PR,IH=H-PT-PB;
+    const barVals=data.map(d=>d[barKey]), lineVals=data.map(d=>d[lineKey]);
+    const allVals=[...barVals,...lineVals].filter(v=>v!==undefined);
+    const maxV=Math.max(...allVals,1);
+    const minV=Math.min(...lineVals,0);
+    const pad=(maxV-minV)*0.1||1000;
+    const yMax=maxV+pad, yMin=minV-pad;
+    const xP=i=>PL+(i+0.5)*(IW/data.length);
+    const yP=v=>PT+IH-((v-yMin)/(yMax-yMin))*IH;
+    const bw=Math.max(4,(IW/data.length)*0.6);
+    const fY=v=>v>=10000?Math.round(v/1000)+'k':fmt(Math.abs(v));
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('viewBox','0 0 '+W+' '+H);svg.setAttribute('class','chart');
+    // grid
+    const zero=yP(0);
+    const gridLine=document.createElementNS('http://www.w3.org/2000/svg','line');
+    gridLine.setAttribute('x1',PL);gridLine.setAttribute('y1',zero);gridLine.setAttribute('x2',W-PR);gridLine.setAttribute('y2',zero);
+    gridLine.setAttribute('stroke','#2a2a2a');gridLine.setAttribute('stroke-width','1');gridLine.setAttribute('stroke-dasharray','3,3');
+    svg.appendChild(gridLine);
+    [yMin,(yMin+yMax)/2,yMax].forEach(v=>{
+      const y=yP(v);
+      const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1',PL);line.setAttribute('y1',y);line.setAttribute('x2',W-PR);line.setAttribute('y2',y);
+      line.setAttribute('stroke','#1a1a1a');line.setAttribute('stroke-width','1');svg.appendChild(line);
+      const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
+      txt.setAttribute('x',PL-4);txt.setAttribute('y',y+4);txt.setAttribute('text-anchor','end');
+      txt.setAttribute('fill','#444');txt.setAttribute('font-size','8');txt.setAttribute('font-family','monospace');
+      txt.textContent=fY(v);svg.appendChild(txt);
+    });
+    // bars
+    data.forEach((d,i)=>{
+      const bv=d[barKey]||0,cx=xP(i),by=yP(Math.max(bv,0)),bh=Math.abs(yP(0)-yP(bv));
+      const bar=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      bar.setAttribute('x',cx-bw/2);bar.setAttribute('y',Math.min(by,yP(0)));
+      bar.setAttribute('width',bw);bar.setAttribute('height',Math.max(bh,2));
+      bar.setAttribute('fill',barColor);bar.setAttribute('opacity','0.6');bar.setAttribute('rx','2');
+      svg.appendChild(bar);
+    });
+    // line
+    if(data.length>1){
+      const coords=data.map((d,i)=>xP(i)+','+yP(d[lineKey]||0)).join(' ');
+      const pline=document.createElementNS('http://www.w3.org/2000/svg','polyline');
+      pline.setAttribute('points',coords);pline.setAttribute('fill','none');
+      pline.setAttribute('stroke',lineColor);pline.setAttribute('stroke-width','2');
+      pline.setAttribute('stroke-linejoin','round');pline.setAttribute('stroke-linecap','round');
+      svg.appendChild(pline);
+      data.forEach((d,i)=>{
+        const c2=document.createElementNS('http://www.w3.org/2000/svg','circle');
+        c2.setAttribute('cx',xP(i));c2.setAttribute('cy',yP(d[lineKey]||0));
+        c2.setAttribute('r','3');c2.setAttribute('fill',lineColor);
+        c2.setAttribute('stroke','#0a0a0a');c2.setAttribute('stroke-width','1.5');svg.appendChild(c2);
+      });
+    }
+    // x labels
+    const step=data.length>12?Math.ceil(data.length/8):1;
+    data.forEach((d,i)=>{
+      if(i%step!==0&&i!==data.length-1)return;
+      const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
+      txt.setAttribute('x',xP(i));txt.setAttribute('y',H-4);txt.setAttribute('text-anchor','middle');
+      txt.setAttribute('fill','#444');txt.setAttribute('font-size','8');
+      txt.textContent=d.label;svg.appendChild(txt);
+    });
+    return svg;
+  }
+
+  // ── year category bar chart ──
+  function renderYearCatBar() {
+    if(!yearCatSorted.length) return h('div',{class:'empty'},'尚無年度花費資料');
+    const W=320,barH=18,gap=5,PL=62,PR=62;
+    const H=yearCatSorted.length*(barH+gap)+10;
+    const maxV=yearCatSorted[0].val;
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('viewBox','0 0 '+W+' '+H);
+    svg.style.cssText='width:100%;height:'+H+'px;display:block;';
+    yearCatSorted.forEach((item,i)=>{
+      const y=i*(barH+gap)+5,bw=Math.max(2,((item.val/maxV)*(W-PL-PR)));
+      const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
+      lbl.setAttribute('x',PL-5);lbl.setAttribute('y',y+barH/2+4);
+      lbl.setAttribute('text-anchor','end');lbl.setAttribute('fill','#aaa');lbl.setAttribute('font-size','10');
+      lbl.textContent=item.name;svg.appendChild(lbl);
+      const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      bg.setAttribute('x',PL);bg.setAttribute('y',y);bg.setAttribute('width',W-PL-PR);bg.setAttribute('height',barH);
+      bg.setAttribute('fill','#1a1a1a');bg.setAttribute('rx','3');svg.appendChild(bg);
+      const bar=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      bar.setAttribute('x',PL);bar.setAttribute('y',y);bar.setAttribute('width',bw);bar.setAttribute('height',barH);
+      bar.setAttribute('fill',item.color);bar.setAttribute('rx','3');bar.setAttribute('opacity','0.8');svg.appendChild(bar);
+      const val=document.createElementNS('http://www.w3.org/2000/svg','text');
+      val.setAttribute('x',PL+bw+5);val.setAttribute('y',y+barH/2+4);
+      val.setAttribute('fill','#888');val.setAttribute('font-size','9');val.setAttribute('font-family','monospace');
+      val.textContent=fmt(item.val);svg.appendChild(val);
+    });
+    return svg;
+  }
+
+  const savingsChartCard = monthlyData.length>0 ? h('div',{class:'chart-card'},
+    h('div',{class:'chart-header'},
+      h('div',{class:'chart-title'},'每月存款'),
+      h('div',{class:'chart-sub'},'藍柱=收入 橘柱=支出 線=淨額')
+    ),
+    renderComboChart(
+      monthlyData.map(d=>({...d,expenseNeg:-d.expense})),
+      '','','income','saving','#4488cc','#6dd6a0'
+    )
+  ) : null;
+
+  const expenseChartCard = monthlyData.length>0 ? h('div',{class:'chart-card'},
+    h('div',{class:'chart-header'},
+      h('div',{class:'chart-title'},'每月支出變化'),
+      h('div',{class:'chart-sub'},'柱=支出金額 線=趨勢')
+    ),
+    renderComboChart(monthlyData,'','','expense','expense','#e07070','#ff9090')
+  ) : null;
+
+  const yearCatCard = yearCatSorted.length>0 ? h('div',{class:'chart-card'},
+    h('div',{class:'chart-header'},
+      h('div',{class:'chart-title'},year+'年度各類花費分析'),
+      h('div',{class:'chart-sub'},'依類別累計')
+    ),
+    h('div',{class:'bar-chart-wrap'},renderYearCatBar())
+  ) : null;
+
+  return h('div',{class:'page'},
+    summaryCards,
+    savingsChartCard,
+    expenseChartCard,
+    yearCatCard
+  );
+}
+
+// ══════════════════════════════════════════════
+// ROUTER
+// ══════════════════════════════════════════════
+function showPage(p) {
+  STATE.page=p;
+  document.querySelectorAll('.nav-btn').forEach((b,i)=>{
+    b.classList.toggle('active',['home','ot','salary','annual','expense'][i]===p);
+  });
+  renderPage();
+}
+
+function renderPage() {
+  const main=document.getElementById('main-content');
+  main.innerHTML='';
+  let el;
+  if(STATE.page==='home') el=renderHome();
+  else if(STATE.page==='ot') el=renderOT();
+  else if(STATE.page==='salary') el=renderSalary();
+  else if(STATE.page==='annual') el=renderAnnual();
+  else el=renderExpense();
+  main.appendChild(el);
+}
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+function migrateAllSalaryData() {
+  Object.keys(STATE.salaryData).forEach(key => {
+    const d = STATE.salaryData[key];
+    if (!d) return;
+    // Migrate old a/b/c format
+    if (d.a && !d.taxAdd) { d.taxAdd = d.a; delete d.a; }
+    if (d.b && !d.exempt)  { d.exempt  = d.b; delete d.b; }
+    if (d.c && !d.other)   { d.other   = d.c; delete d.c; }
+    // Ensure all fields exist with defaults
+    if (!d.taxAdd || !Array.isArray(d.taxAdd)) d.taxAdd = DEF_TAX_ADD.map(i=>({...i}));
+    if (!d.taxDed || !Array.isArray(d.taxDed)) d.taxDed = DEF_TAX_DED.map(i=>({...i}));
+    if (!d.exempt || !Array.isArray(d.exempt)) d.exempt = DEF_EXEMPT.map(i=>({...i}));
+    if (!d.other  || !Array.isArray(d.other))  d.other  = DEF_OTHER.map(i=>({...i}));
+  });
+  // Save migrated data back
+  dbSet('st_salaryData', STATE.salaryData);
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  // First load from localStorage cache (instant)
+  const salCache  = LS.get('st_salary');
+  const otrCache  = LS.get('st_otRecords');
+  const saldCache = LS.get('st_salaryData');
+  const expdCache = LS.get('st_expenseData');
+  const initSvCache = LS.get('st_initSavings');
+  if (salCache !== null) STATE.salary = salCache;
+  if (otrCache !== null) STATE.otRecords = otrCache;
+  if (saldCache !== null) STATE.salaryData = saldCache;
+  if (expdCache !== null) STATE.expenseData = expdCache;
+  if (initSvCache !== null) STATE.initSavings = initSvCache;
+
+  try {
+    const [sal, otr, sald, expd, initSv] = await Promise.all([
+      dbGet('st_salary'),
+      dbGet('st_otRecords'),
+      dbGet('st_salaryData'),
+      dbGet('st_expenseData'),
+      dbGet('st_initSavings'),
+    ]);
+    if (sal !== null) STATE.salary = sal;
+    if (otr !== null) STATE.otRecords = otr;
+    if (sald !== null) STATE.salaryData = sald;
+    if (expd !== null) STATE.expenseData = expd;
+    if (initSv !== null) STATE.initSavings = initSv;
+  } catch {}
+
+  migrateAllSalaryData();
+
+  document.getElementById('loading').classList.add('hidden');
+  // Show lock screen (not app yet)
+  document.getElementById('lock-screen').style.display = 'flex';
+});
+</script>
+</body>
+</html>
