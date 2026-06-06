@@ -1579,101 +1579,125 @@ function renderExpense() {
     );
 
   } else {
-    // trend line chart - all months
+    // trend line chart - expense + saving two lines
     const allMonths = getMonthList().reverse().filter(m=>{
       const d2=STATE.expenseData[m.key];
       return d2 && (Array.isArray(d2)?d2.length>0:Object.values(d2).some(v=>Number(v)>0));
     });
     const chartData = allMonths.map(m=>{
       const d2=STATE.expenseData[m.key];
-      const t=Array.isArray(d2)?d2.reduce((s,i)=>s+(Number(i.amount)||0),0):EXP_CATS.reduce((s,c)=>s+(Number(d2[c.id])||0),0);
-      return {month:m,total:t};
+      let exp=0, sav=0;
+      if(Array.isArray(d2)){
+        d2.forEach(i=>{ if(i.catId===SAVING_CAT_ID) sav+=Number(i.amount)||0; else exp+=Number(i.amount)||0; });
+      } else {
+        EXP_CATS.forEach(c=>{ const v=Number(d2[c.id])||0; if(c.id===SAVING_CAT_ID) sav+=v; else exp+=v; });
+      }
+      return {month:m, exp, sav};
     });
 
-    let lineEl;
-    if(chartData.length<1){
-      lineEl=h('div',{class:'empty'},'尚無花費資料');
-    } else if(chartData.length===1){
-      lineEl=h('div',{class:'empty',style:'color:#aaa'},'僅'+chartData[0].month.label+' NT$'+fmt(chartData[0].total)+'｜需至少 2 個月才顯示趨勢');
-    } else {
-      const W=320,H=160,PL=50,PR=14,PT=14,PB=28;
+    function drawDualLine(data) {
+      if(data.length<1) return h('div',{class:'empty'},'尚無花費資料');
+      if(data.length===1) return h('div',{class:'empty',style:'color:#aaa'},'需至少 2 個月才顯示趨勢');
+      const W=320,H=180,PL=50,PR=14,PT=14,PB=28;
       const IW=W-PL-PR,IH=H-PT-PB;
-      const vals=chartData.map(d=>d.total);
-      const minV=Math.min(...vals),maxV=Math.max(...vals);
-      const pad=(maxV-minV||1)*0.15;
+      const allVals=[...data.map(d=>d.exp),...data.map(d=>d.sav)];
+      const maxV=Math.max(...allVals,1),minV=Math.min(...allVals,0);
+      const pad=(maxV-minV)*0.12||1000;
       const yMin=Math.max(0,minV-pad),yMax=maxV+pad;
-      const xP=i=>PL+(i/(chartData.length-1))*IW;
+      const xP=i=>PL+(i/(data.length-1))*IW;
       const yP=v=>PT+IH-((v-yMin)/(yMax-yMin))*IH;
       const fY=v=>v>=10000?Math.round(v/1000)+'k':fmt(v);
       const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
       svg.setAttribute('viewBox','0 0 '+W+' '+H);svg.setAttribute('class','chart');
+
+      // grid lines
       [yMin,(yMin+yMax)/2,yMax].forEach(v=>{
         const y=yP(v);
-        const line=document.createElementNS('http://www.w3.org/2000/svg','line');
-        line.setAttribute('x1',PL);line.setAttribute('y1',y);line.setAttribute('x2',W-PR);line.setAttribute('y2',y);
-        line.setAttribute('stroke','#1e1e1e');line.setAttribute('stroke-width','1');svg.appendChild(line);
-        const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
-        txt.setAttribute('x',PL-4);txt.setAttribute('y',y+4);txt.setAttribute('text-anchor','end');
-        txt.setAttribute('fill','#444');txt.setAttribute('font-size','9');txt.setAttribute('font-family','monospace');
-        txt.textContent=fY(v);svg.appendChild(txt);
+        const gl=document.createElementNS('http://www.w3.org/2000/svg','line');
+        gl.setAttribute('x1',PL);gl.setAttribute('y1',y);gl.setAttribute('x2',W-PR);gl.setAttribute('y2',y);
+        gl.setAttribute('stroke','#1e1e1e');gl.setAttribute('stroke-width','1');svg.appendChild(gl);
+        const gt=document.createElementNS('http://www.w3.org/2000/svg','text');
+        gt.setAttribute('x',PL-4);gt.setAttribute('y',y+4);gt.setAttribute('text-anchor','end');
+        gt.setAttribute('fill','#444');gt.setAttribute('font-size','8');gt.setAttribute('font-family','monospace');
+        gt.textContent=fY(v);svg.appendChild(gt);
       });
-      const coords=chartData.map((_,i)=>xP(i)+','+yP(vals[i])).join(' ');
-      const poly=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-      poly.setAttribute('points',PL+','+(PT+IH)+' '+coords+' '+xP(chartData.length-1)+','+(PT+IH));
-      poly.setAttribute('fill','rgba(224,112,112,0.07)');svg.appendChild(poly);
-      const pline=document.createElementNS('http://www.w3.org/2000/svg','polyline');
-      pline.setAttribute('points',coords);pline.setAttribute('fill','none');
-      pline.setAttribute('stroke','#e07070');pline.setAttribute('stroke-width','1.8');
-      pline.setAttribute('stroke-linejoin','round');pline.setAttribute('stroke-linecap','round');svg.appendChild(pline);
-      let tipEl=null;
-      chartData.forEach((d,i)=>{
-        const cx=xP(i),cy=yP(vals[i]);
-        const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
-        c.setAttribute('cx',cx);c.setAttribute('cy',cy);c.setAttribute('r','3.5');
-        c.setAttribute('fill','#e07070');c.setAttribute('stroke','#0a0a0a');c.setAttribute('stroke-width','1.5');svg.appendChild(c);
-        const hit=document.createElementNS('http://www.w3.org/2000/svg','rect');
-        hit.setAttribute('x',cx-14);hit.setAttribute('y',PT);hit.setAttribute('width','28');hit.setAttribute('height',IH+PB);
-        hit.setAttribute('fill','transparent');
-        const showTip=()=>{
-          if(tipEl)svg.removeChild(tipEl);
-          const tw=90,th=38,tx=Math.min(Math.max(cx-tw/2,PL),W-PR-tw),ty=cy-th-8;
-          tipEl=document.createElementNS('http://www.w3.org/2000/svg','g');
-          const bg2=document.createElementNS('http://www.w3.org/2000/svg','rect');
-          bg2.setAttribute('x',tx);bg2.setAttribute('y',ty);bg2.setAttribute('width',tw);bg2.setAttribute('height',th);
-          bg2.setAttribute('rx','5');bg2.setAttribute('fill','#1a1a1a');bg2.setAttribute('stroke','#2a2a2a');
-          const t1=document.createElementNS('http://www.w3.org/2000/svg','text');
-          t1.setAttribute('x',tx+tw/2);t1.setAttribute('y',ty+13);t1.setAttribute('text-anchor','middle');
-          t1.setAttribute('fill','#aaa');t1.setAttribute('font-size','9');t1.textContent=d.month.label;
-          const t2=document.createElementNS('http://www.w3.org/2000/svg','text');
-          t2.setAttribute('x',tx+tw/2);t2.setAttribute('y',ty+28);t2.setAttribute('text-anchor','middle');
-          t2.setAttribute('fill','#e07070');t2.setAttribute('font-size','12');t2.setAttribute('font-weight','600');
-          t2.textContent='NT$ '+fmt(vals[i]);
-          tipEl.appendChild(bg2);tipEl.appendChild(t1);tipEl.appendChild(t2);svg.appendChild(tipEl);
-        };
-        hit.addEventListener('mouseenter',showTip);
-        hit.addEventListener('mouseleave',()=>{if(tipEl){svg.removeChild(tipEl);tipEl=null;}});
-        hit.addEventListener('touchstart',e=>{e.preventDefault();showTip();},{passive:false});
-        hit.addEventListener('touchend',()=>setTimeout(()=>{if(tipEl){svg.removeChild(tipEl);tipEl=null;}},1800));
-        svg.appendChild(hit);
+
+      // draw one line + dots with tooltip
+      function drawLine(vals, color, label) {
+        const coords=data.map((_,i)=>xP(i)+','+yP(vals[i])).join(' ');
+        const area=PL+','+(PT+IH)+' '+coords+' '+xP(data.length-1)+','+(PT+IH);
+        const poly=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+        poly.setAttribute('points',area);poly.setAttribute('fill',color.replace(')',',0.06)').replace('rgb','rgba'));svg.appendChild(poly);
+        const pl2=document.createElementNS('http://www.w3.org/2000/svg','polyline');
+        pl2.setAttribute('points',coords);pl2.setAttribute('fill','none');
+        pl2.setAttribute('stroke',color);pl2.setAttribute('stroke-width','1.8');
+        pl2.setAttribute('stroke-linejoin','round');pl2.setAttribute('stroke-linecap','round');svg.appendChild(pl2);
+        let tipEl=null;
+        data.forEach((d,i)=>{
+          const cx=xP(i),cy=yP(vals[i]);
+          const c2=document.createElementNS('http://www.w3.org/2000/svg','circle');
+          c2.setAttribute('cx',cx);c2.setAttribute('cy',cy);c2.setAttribute('r','3.5');
+          c2.setAttribute('fill',color);c2.setAttribute('stroke','#0a0a0a');c2.setAttribute('stroke-width','1.5');svg.appendChild(c2);
+          const hit=document.createElementNS('http://www.w3.org/2000/svg','rect');
+          hit.setAttribute('x',cx-12);hit.setAttribute('y',PT);hit.setAttribute('width','24');hit.setAttribute('height',IH+PB);
+          hit.setAttribute('fill','transparent');
+          const showTip=()=>{
+            if(tipEl)svg.removeChild(tipEl);
+            const tw=100,th=42,tx=Math.min(Math.max(cx-tw/2,PL),W-PR-tw),ty=cy-th-8;
+            tipEl=document.createElementNS('http://www.w3.org/2000/svg','g');
+            const bg3=document.createElementNS('http://www.w3.org/2000/svg','rect');
+            bg3.setAttribute('x',tx);bg3.setAttribute('y',ty);bg3.setAttribute('width',tw);bg3.setAttribute('height',th);
+            bg3.setAttribute('rx','5');bg3.setAttribute('fill','#1a1a1a');bg3.setAttribute('stroke','#2a2a2a');
+            const tt1=document.createElementNS('http://www.w3.org/2000/svg','text');
+            tt1.setAttribute('x',tx+tw/2);tt1.setAttribute('y',ty+13);tt1.setAttribute('text-anchor','middle');
+            tt1.setAttribute('fill','#aaa');tt1.setAttribute('font-size','9');tt1.textContent=d.month.label+' '+label;
+            const tt2=document.createElementNS('http://www.w3.org/2000/svg','text');
+            tt2.setAttribute('x',tx+tw/2);tt2.setAttribute('y',ty+30);tt2.setAttribute('text-anchor','middle');
+            tt2.setAttribute('fill',color);tt2.setAttribute('font-size','12');tt2.setAttribute('font-weight','600');
+            tt2.textContent='NT$ '+fmt(vals[i]);
+            tipEl.appendChild(bg3);tipEl.appendChild(tt1);tipEl.appendChild(tt2);svg.appendChild(tipEl);
+          };
+          hit.addEventListener('mouseenter',showTip);
+          hit.addEventListener('mouseleave',()=>{if(tipEl){svg.removeChild(tipEl);tipEl=null;}});
+          hit.addEventListener('touchstart',e=>{e.preventDefault();showTip();},{passive:false});
+          hit.addEventListener('touchend',()=>setTimeout(()=>{if(tipEl){svg.removeChild(tipEl);tipEl=null;}},1800));
+          svg.appendChild(hit);
+        });
+      }
+
+      drawLine(data.map(d=>d.exp),'#e07070','花費');
+      drawLine(data.map(d=>d.sav),'#f0d060','存款');
+
+      // x labels
+      const step=data.length>12?Math.ceil(data.length/8):1;
+      data.forEach((d,i)=>{
+        if(i%step!==0&&i!==data.length-1)return;
+        const xt=document.createElementNS('http://www.w3.org/2000/svg','text');
+        xt.setAttribute('x',xP(i));xt.setAttribute('y',H-4);xt.setAttribute('text-anchor','middle');
+        xt.setAttribute('fill','#444');xt.setAttribute('font-size','8');
+        xt.textContent=d.month.key.slice(2).replace('-','/');svg.appendChild(xt);
       });
-      const step=chartData.length>12?Math.ceil(chartData.length/8):1;
-      chartData.forEach((d,i)=>{
-        if(i%step!==0&&i!==chartData.length-1)return;
-        const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
-        txt.setAttribute('x',xP(i));txt.setAttribute('y',H-4);txt.setAttribute('text-anchor','middle');
-        txt.setAttribute('fill','#444');txt.setAttribute('font-size','8');
-        txt.textContent=d.month.key.slice(2).replace('-','/');svg.appendChild(txt);
+
+      // legend
+      [['#e07070','花費'],['#f0d060','存款']].forEach(([c,l],i)=>{
+        const lx=PL+i*60;
+        const lr=document.createElementNS('http://www.w3.org/2000/svg','rect');
+        lr.setAttribute('x',lx);lr.setAttribute('y',PT-8);lr.setAttribute('width','10');lr.setAttribute('height','4');
+        lr.setAttribute('fill',c);lr.setAttribute('rx','2');svg.appendChild(lr);
+        const lt=document.createElementNS('http://www.w3.org/2000/svg','text');
+        lt.setAttribute('x',lx+13);lt.setAttribute('y',PT-5);
+        lt.setAttribute('fill','#666');lt.setAttribute('font-size','9');lt.textContent=l;svg.appendChild(lt);
       });
-      lineEl=svg;
+      return svg;
     }
 
     mainContent = h('div',{style:'display:flex;flex-direction:column;gap:12px'},
       h('div',{class:'chart-card'},
         h('div',{class:'chart-header'},
-          h('div',{class:'chart-title'},'每月花費趨勢'),
+          h('div',{class:'chart-title'},'每月花費 & 存款趨勢'),
           h('div',{class:'chart-sub'},'全歷史紀錄')
         ),
-        lineEl
+        drawDualLine(chartData)
       )
     );
   }
