@@ -2013,119 +2013,194 @@ function renderHome() {
     return svg;
   }
 
-  // ── dual line chart: regular income + expense (scrollable, no annual bonus) ──
+  // ── dual line chart with overview + detail toggle ──
   function renderDualLineChart(data, incKey, expKey, incColor, expColor, incLabel, expLabel) {
     if(!data.length) return h('div',{class:'empty'},'尚無資料');
-    // Make chart wider if many months
-    const minW=360, perCol=32;
-    const W=Math.max(minW, data.length*perCol+80);
-    const H=220,PL=56,PR=16,PT=28,PB=36,IW=W-PL-PR,IH=H-PT-PB;
-    const incVals=data.map(d=>d[incKey||'regularIncome']||0), expVals=expKey?data.map(d=>d[expKey]||0):[];
-    const allVals=[...incVals,...expVals];
-    const maxV=Math.max(...allVals,1), minV=0;
-    const pad=maxV*0.12||1000;
-    const yMax=maxV+pad, yMin=0;
-    const xP=i=>PL+(data.length>1?(i/(data.length-1))*IW:IW/2);
-    const yP=v=>PT+IH-((v-yMin)/(yMax-yMin))*IH;
-    const fY=v=>v>=10000?Math.round(v/1000)+'k':fmt(v);
-    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-    svg.setAttribute('viewBox','0 0 '+W+' '+H);svg.setAttribute('class','chart');
 
-    // grid
-    [0,(yMax/2),yMax].forEach(v=>{
-      const y=yP(v);
-      const gl=document.createElementNS('http://www.w3.org/2000/svg','line');
-      gl.setAttribute('x1',PL);gl.setAttribute('y1',y);gl.setAttribute('x2',W-PR);gl.setAttribute('y2',y);
-      gl.setAttribute('stroke','#1a1a1a');gl.setAttribute('stroke-width','1');svg.appendChild(gl);
-      const gt=document.createElementNS('http://www.w3.org/2000/svg','text');
-      gt.setAttribute('x',PL-4);gt.setAttribute('y',y+4);gt.setAttribute('text-anchor','end');
-      gt.setAttribute('fill','#444');gt.setAttribute('font-size','8');gt.setAttribute('font-family','monospace');
-      gt.textContent=fY(v);svg.appendChild(gt);
-    });
+    const ic = incColor||'#6dd6a0', ec = expColor||'#e07070';
+    const il = incLabel||'收入', el2 = expLabel||'支出';
 
-    // draw a line
-    function drawLine(vals, color) {
-      if(!vals||vals.length<2||!color) return;
-      const coords=vals.map((v,i)=>xP(i)+','+yP(v)).join(' ');
-      const pl2=document.createElementNS('http://www.w3.org/2000/svg','polyline');
-      pl2.setAttribute('points',coords);pl2.setAttribute('fill','none');
-      pl2.setAttribute('stroke',color);pl2.setAttribute('stroke-width','2');
-      pl2.setAttribute('stroke-linejoin','round');pl2.setAttribute('stroke-linecap','round');
-      svg.appendChild(pl2);
-      vals.forEach((v,i)=>{
-        const c2=document.createElementNS('http://www.w3.org/2000/svg','circle');
-        c2.setAttribute('cx',xP(i));c2.setAttribute('cy',yP(v));c2.setAttribute('r','3.5');
-        c2.setAttribute('fill',color);c2.setAttribute('stroke','#0a0a0a');c2.setAttribute('stroke-width','1.5');
-        svg.appendChild(c2);
+    // Container
+    const container = document.createElement('div');
+
+    // State
+    let mode = 'overview'; // 'overview' | 'detail'
+    let detailStart = Math.max(0, data.length-12);
+
+    function buildChart() {
+      container.innerHTML = '';
+
+      // Mode toggle buttons
+      const toggleRow = document.createElement('div');
+      toggleRow.style.cssText = 'display:flex;gap:6px;margin-bottom:10px;align-items:center;';
+      ['全覽','詳細'].forEach((label,i) => {
+        const btn = document.createElement('button');
+        const isActive = (i===0&&mode==='overview')||(i===1&&mode==='detail');
+        btn.textContent = label;
+        btn.style.cssText = 'padding:4px 12px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid '+(isActive?ic:'#2a2a2a')+';background:'+(isActive?ic+'22':'transparent')+';color:'+(isActive?ic:'#666')+';font-family:inherit;';
+        btn.addEventListener('click', ()=>{ mode=i===0?'overview':'detail'; buildChart(); });
+        toggleRow.appendChild(btn);
       });
+
+      // Detail nav buttons
+      if(mode==='detail') {
+        const navWrap = document.createElement('div');
+        navWrap.style.cssText = 'display:flex;gap:6px;margin-left:auto;align-items:center;';
+        const pageSize = 12;
+        const totalPages = Math.ceil(data.length/pageSize);
+        const curPage = Math.floor(detailStart/pageSize);
+        const pageLabel = document.createElement('span');
+        pageLabel.style.cssText = 'font-size:10px;color:#555;';
+        pageLabel.textContent = (curPage+1)+' / '+totalPages;
+        const prevBtn = document.createElement('button');
+        prevBtn.textContent = '◀';
+        prevBtn.style.cssText = 'padding:3px 10px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid #2a2a2a;background:transparent;color:'+(detailStart>0?'#aaa':'#333')+';';
+        prevBtn.disabled = detailStart<=0;
+        prevBtn.addEventListener('click', ()=>{ detailStart=Math.max(0,detailStart-pageSize); buildChart(); });
+        const nextBtn = document.createElement('button');
+        nextBtn.textContent = '▶';
+        nextBtn.style.cssText = 'padding:3px 10px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid #2a2a2a;background:transparent;color:'+(detailStart+pageSize<data.length?'#aaa':'#333')+';';
+        nextBtn.disabled = detailStart+pageSize>=data.length;
+        nextBtn.addEventListener('click', ()=>{ detailStart=Math.min(data.length-pageSize,detailStart+pageSize); buildChart(); });
+        navWrap.appendChild(prevBtn);
+        navWrap.appendChild(pageLabel);
+        navWrap.appendChild(nextBtn);
+        toggleRow.appendChild(navWrap);
+      }
+      container.appendChild(toggleRow);
+
+      // Select data slice
+      const viewData = mode==='overview' ? data : data.slice(detailStart, detailStart+12);
+
+      // Chart dimensions
+      const perCol = mode==='overview' ? Math.max(14, Math.min(24, 320/data.length)) : 26;
+      const W = mode==='overview' ? Math.max(320, data.length*perCol+70) : 340;
+      const H = mode==='overview' ? 180 : 240;
+      const PL=56,PR=16,PT=28,PB=36,IW=W-PL-PR,IH=H-PT-PB;
+
+      const incVals = viewData.map(d=>d[incKey||'regularIncome']||0);
+      const expVals = expKey ? viewData.map(d=>d[expKey]||0) : [];
+      const allVals = [...incVals,...expVals];
+      const maxV = Math.max(...allVals,1);
+      const yMax = maxV*1.15, yMin = 0;
+      const xP = i => PL + (viewData.length>1 ? (i/(viewData.length-1))*IW : IW/2);
+      const yP = v => PT+IH-((v-yMin)/(yMax-yMin))*IH;
+      const fY = v => v>=10000?Math.round(v/1000)+'k':fmt(v);
+
+      const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+      svg.setAttribute('viewBox','0 0 '+W+' '+H);
+      svg.style.cssText = 'display:block;width:100%;height:'+H+'px;';
+
+      // Grid
+      [0, maxV/2, maxV].forEach(v=>{
+        const y=yP(v);
+        const gl=document.createElementNS('http://www.w3.org/2000/svg','line');
+        gl.setAttribute('x1',PL);gl.setAttribute('y1',y);gl.setAttribute('x2',W-PR);gl.setAttribute('y2',y);
+        gl.setAttribute('stroke','#1e1e1e');gl.setAttribute('stroke-width','1');svg.appendChild(gl);
+        const gt=document.createElementNS('http://www.w3.org/2000/svg','text');
+        gt.setAttribute('x',PL-5);gt.setAttribute('y',y+4);gt.setAttribute('text-anchor','end');
+        gt.setAttribute('fill','#555');gt.setAttribute('font-size',mode==='detail'?'10':'9');gt.setAttribute('font-family','monospace');
+        gt.textContent=fY(v);svg.appendChild(gt);
+      });
+
+      // Draw line + dots
+      function drawLine(vals, color) {
+        if(!vals||vals.length<1||!color) return;
+        if(vals.length>1){
+          const coords=vals.map((v,i)=>xP(i)+','+yP(v)).join(' ');
+          const pl2=document.createElementNS('http://www.w3.org/2000/svg','polyline');
+          pl2.setAttribute('points',coords);pl2.setAttribute('fill','none');
+          pl2.setAttribute('stroke',color);pl2.setAttribute('stroke-width',mode==='detail'?'1.8':'1.2');
+          pl2.setAttribute('stroke-linejoin','round');pl2.setAttribute('stroke-linecap','round');
+          svg.appendChild(pl2);
+        }
+        vals.forEach((v,i)=>{
+          const c2=document.createElementNS('http://www.w3.org/2000/svg','circle');
+          c2.setAttribute('cx',xP(i));c2.setAttribute('cy',yP(v));
+          c2.setAttribute('r',mode==='detail'?'4':'2.5');
+          c2.setAttribute('fill',color);c2.setAttribute('stroke','#0a0a0a');
+          c2.setAttribute('stroke-width',mode==='detail'?'1.5':'1');
+          svg.appendChild(c2);
+        });
+      }
+
+      if(expVals.length) drawLine(expVals, ec);
+      drawLine(incVals, ic);
+
+      // Tooltips
+      let tipEl=null;
+      viewData.forEach((d,i)=>{
+        const cx=xP(i);
+        const hit=document.createElementNS('http://www.w3.org/2000/svg','rect');
+        hit.setAttribute('x',cx-16);hit.setAttribute('y',PT);
+        hit.setAttribute('width','32');hit.setAttribute('height',IH+PB);
+        hit.setAttribute('fill','transparent');
+        const showTip=()=>{
+          if(tipEl) svg.removeChild(tipEl);
+          const lines=[[ic,il+' NT$'+fmt(incVals[i])]];
+          if(expVals.length) lines.push([ec,el2+' NT$'+fmt(expVals[i])]);
+          const tw=130,th=16+lines.length*16+6;
+          const tx=Math.min(Math.max(cx-tw/2,PL),W-PR-tw);
+          const ty=Math.max(PT+2,yP(Math.max(...[incVals[i],...(expVals[i]?[expVals[i]]:[])].filter(Boolean)))-th-10);
+          tipEl=document.createElementNS('http://www.w3.org/2000/svg','g');
+          const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
+          bg.setAttribute('x',tx);bg.setAttribute('y',ty);bg.setAttribute('width',tw);bg.setAttribute('height',th);
+          bg.setAttribute('rx','5');bg.setAttribute('fill','#1e1e1e');bg.setAttribute('stroke','#333');tipEl.appendChild(bg);
+          const tl=document.createElementNS('http://www.w3.org/2000/svg','text');
+          tl.setAttribute('x',tx+tw/2);tl.setAttribute('y',ty+13);tl.setAttribute('text-anchor','middle');
+          tl.setAttribute('fill','#aaa');tl.setAttribute('font-size','10');tl.textContent=d.label;tipEl.appendChild(tl);
+          lines.forEach(([c,txt],li)=>{
+            const t2=document.createElementNS('http://www.w3.org/2000/svg','text');
+            t2.setAttribute('x',tx+8);t2.setAttribute('y',ty+28+li*16);
+            t2.setAttribute('fill',c);t2.setAttribute('font-size','10');t2.setAttribute('font-family','monospace');
+            t2.textContent=txt;tipEl.appendChild(t2);
+          });
+          svg.appendChild(tipEl);
+        };
+        const hideTip=()=>{if(tipEl){svg.removeChild(tipEl);tipEl=null;}};
+        hit.addEventListener('mouseenter',showTip);
+        hit.addEventListener('mouseleave',hideTip);
+        hit.addEventListener('touchstart',e=>{e.preventDefault();showTip();},{passive:false});
+        hit.addEventListener('touchend',()=>setTimeout(hideTip,2000));
+        svg.appendChild(hit);
+      });
+
+      // X labels
+      const step = mode==='overview' ? Math.max(1,Math.ceil(viewData.length/8)) : 1;
+      viewData.forEach((d,i)=>{
+        if(i%step!==0&&i!==viewData.length-1) return;
+        const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
+        txt.setAttribute('x',xP(i));txt.setAttribute('y',H-6);txt.setAttribute('text-anchor','middle');
+        txt.setAttribute('fill','#555');txt.setAttribute('font-size',mode==='detail'?'11':'9');
+        txt.textContent=d.label;svg.appendChild(txt);
+      });
+
+      // Legend
+      const legendItems=[[ic,il]];
+      if(expKey&&el2) legendItems.push([ec,el2]);
+      legendItems.forEach(([c,l],i)=>{
+        const lx=PL+i*70;
+        const lr=document.createElementNS('http://www.w3.org/2000/svg','rect');
+        lr.setAttribute('x',lx);lr.setAttribute('y',PT-14);lr.setAttribute('width','14');lr.setAttribute('height','3');
+        lr.setAttribute('fill',c);lr.setAttribute('rx','2');svg.appendChild(lr);
+        const lt=document.createElementNS('http://www.w3.org/2000/svg','text');
+        lt.setAttribute('x',lx+17);lt.setAttribute('y',PT-11);
+        lt.setAttribute('fill','#777');lt.setAttribute('font-size','10');lt.textContent=l;svg.appendChild(lt);
+      });
+
+      // Wrap in scrollable div for overview
+      if(mode==='overview' && W>320) {
+        const wrap=document.createElement('div');
+        wrap.style.cssText='overflow-x:auto;-webkit-overflow-scrolling:touch;';
+        wrap.appendChild(svg);
+        container.appendChild(wrap);
+      } else {
+        container.appendChild(svg);
+      }
     }
-    if(expVals.length) drawLine(expVals,expColor||'#e07070');
-    drawLine(incVals,incColor||'#6dd6a0');
 
-    // tooltips (hit area per column)
-    let tipEl=null;
-    data.forEach((d,i)=>{
-      const cx=xP(i);
-      const hit=document.createElementNS('http://www.w3.org/2000/svg','rect');
-      hit.setAttribute('x',cx-16);hit.setAttribute('y',PT);
-      hit.setAttribute('width','32');hit.setAttribute('height',IH+PB);
-      hit.setAttribute('fill','transparent');
-      const showTip=()=>{
-        if(tipEl) svg.removeChild(tipEl);
-        const tw=118,th=56,tx=Math.min(Math.max(cx-tw/2,PL),W-PR-tw);
-        const ty=Math.max(PT,yP(Math.max(incVals[i],expVals[i]))-th-8);
-        tipEl=document.createElementNS('http://www.w3.org/2000/svg','g');
-        const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
-        bg.setAttribute('x',tx);bg.setAttribute('y',ty);bg.setAttribute('width',tw);bg.setAttribute('height',th);
-        bg.setAttribute('rx','5');bg.setAttribute('fill','#1e1e1e');bg.setAttribute('stroke','#333');
-        const tl=document.createElementNS('http://www.w3.org/2000/svg','text');
-        tl.setAttribute('x',tx+tw/2);tl.setAttribute('y',ty+13);tl.setAttribute('text-anchor','middle');
-        tl.setAttribute('fill','#aaa');tl.setAttribute('font-size','9');tl.textContent=d.label;
-        const ti=document.createElementNS('http://www.w3.org/2000/svg','text');
-        ti.setAttribute('x',tx+8);ti.setAttribute('y',ty+29);
-        ti.setAttribute('fill','#6dd6a0');ti.setAttribute('font-size','9');ti.setAttribute('font-family','monospace');
-        ti.textContent='收入 NT$'+fmt(incVals[i]);
-        const te=document.createElementNS('http://www.w3.org/2000/svg','text');
-        te.setAttribute('x',tx+8);te.setAttribute('y',ty+44);
-        te.setAttribute('fill','#e07070');te.setAttribute('font-size','9');te.setAttribute('font-family','monospace');
-        te.textContent='支出 NT$'+fmt(expVals[i]);
-        tipEl.appendChild(bg);tipEl.appendChild(tl);tipEl.appendChild(ti);tipEl.appendChild(te);
-        svg.appendChild(tipEl);
-      };
-      const hideTip=()=>{if(tipEl){svg.removeChild(tipEl);tipEl=null;}};
-      hit.addEventListener('mouseenter',showTip);
-      hit.addEventListener('mouseleave',hideTip);
-      hit.addEventListener('touchstart',e=>{e.preventDefault();showTip();},{passive:false});
-      hit.addEventListener('touchend',()=>setTimeout(hideTip,1800));
-      svg.appendChild(hit);
-    });
-
-    // x labels
-    const step=data.length>12?Math.ceil(data.length/8):1;
-    data.forEach((d,i)=>{
-      if(i%step!==0&&i!==data.length-1)return;
-      const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
-      txt.setAttribute('x',xP(i));txt.setAttribute('y',H-4);txt.setAttribute('text-anchor','middle');
-      txt.setAttribute('fill','#444');txt.setAttribute('font-size','8');txt.textContent=d.label;svg.appendChild(txt);
-    });
-
-    // legend
-    const legendItems=[[incColor||'#6dd6a0',incLabel||'收入']];
-    if(expKey&&expLabel) legendItems.push([expColor||'#e07070',expLabel]);
-    legendItems.forEach(([c,l],i)=>{
-      const lx=PL+i*54;
-      const lr=document.createElementNS('http://www.w3.org/2000/svg','rect');
-      lr.setAttribute('x',lx);lr.setAttribute('y',PT-10);lr.setAttribute('width','12');lr.setAttribute('height','3');
-      lr.setAttribute('fill',c);lr.setAttribute('rx','2');svg.appendChild(lr);
-      const lt=document.createElementNS('http://www.w3.org/2000/svg','text');
-      lt.setAttribute('x',lx+15);lt.setAttribute('y',PT-7);lt.setAttribute('fill','#666');lt.setAttribute('font-size','9');
-      lt.textContent=l;svg.appendChild(lt);
-    });
-
-    const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'overflow-x:auto;-webkit-overflow-scrolling:touch;';
-    wrapper.appendChild(svg);
-    return wrapper;
+    buildChart();
+    return container;
   }
 
   const incExpChartCard = monthlyData.length>0 ? h('div',{class:'chart-card'},
