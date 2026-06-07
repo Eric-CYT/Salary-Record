@@ -1987,24 +1987,122 @@ function renderHome() {
     return svg;
   }
 
-  const savingsChartCard = monthlyData.length>0 ? h('div',{class:'chart-card'},
+  // ── dual line chart: income + expense ──
+  function renderDualLineChart(data) {
+    if(!data.length) return h('div',{class:'empty'},'尚無資料');
+    const W=320,H=170,PL=50,PR=14,PT=20,PB=28,IW=W-PL-PR,IH=H-PT-PB;
+    const incVals=data.map(d=>d.income||0), expVals=data.map(d=>d.expense||0);
+    const allVals=[...incVals,...expVals];
+    const maxV=Math.max(...allVals,1), minV=0;
+    const pad=maxV*0.12||1000;
+    const yMax=maxV+pad, yMin=0;
+    const xP=i=>PL+(i/(data.length-1||1))*IW;
+    const yP=v=>PT+IH-((v-yMin)/(yMax-yMin))*IH;
+    const fY=v=>v>=10000?Math.round(v/1000)+'k':fmt(v);
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('viewBox','0 0 '+W+' '+H);svg.setAttribute('class','chart');
+
+    // grid
+    [0,(yMax/2),yMax].forEach(v=>{
+      const y=yP(v);
+      const gl=document.createElementNS('http://www.w3.org/2000/svg','line');
+      gl.setAttribute('x1',PL);gl.setAttribute('y1',y);gl.setAttribute('x2',W-PR);gl.setAttribute('y2',y);
+      gl.setAttribute('stroke','#1a1a1a');gl.setAttribute('stroke-width','1');svg.appendChild(gl);
+      const gt=document.createElementNS('http://www.w3.org/2000/svg','text');
+      gt.setAttribute('x',PL-4);gt.setAttribute('y',y+4);gt.setAttribute('text-anchor','end');
+      gt.setAttribute('fill','#444');gt.setAttribute('font-size','8');gt.setAttribute('font-family','monospace');
+      gt.textContent=fY(v);svg.appendChild(gt);
+    });
+
+    // draw a line
+    function drawLine(vals, color) {
+      if(data.length<2) return;
+      const coords=vals.map((v,i)=>xP(i)+','+yP(v)).join(' ');
+      const pl2=document.createElementNS('http://www.w3.org/2000/svg','polyline');
+      pl2.setAttribute('points',coords);pl2.setAttribute('fill','none');
+      pl2.setAttribute('stroke',color);pl2.setAttribute('stroke-width','2');
+      pl2.setAttribute('stroke-linejoin','round');pl2.setAttribute('stroke-linecap','round');
+      svg.appendChild(pl2);
+      vals.forEach((v,i)=>{
+        const c2=document.createElementNS('http://www.w3.org/2000/svg','circle');
+        c2.setAttribute('cx',xP(i));c2.setAttribute('cy',yP(v));c2.setAttribute('r','3.5');
+        c2.setAttribute('fill',color);c2.setAttribute('stroke','#0a0a0a');c2.setAttribute('stroke-width','1.5');
+        svg.appendChild(c2);
+      });
+    }
+    drawLine(expVals,'#e07070');
+    drawLine(incVals,'#6dd6a0');
+
+    // tooltips (hit area per column)
+    let tipEl=null;
+    data.forEach((d,i)=>{
+      const cx=xP(i);
+      const hit=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      hit.setAttribute('x',cx-16);hit.setAttribute('y',PT);
+      hit.setAttribute('width','32');hit.setAttribute('height',IH+PB);
+      hit.setAttribute('fill','transparent');
+      const showTip=()=>{
+        if(tipEl) svg.removeChild(tipEl);
+        const tw=118,th=56,tx=Math.min(Math.max(cx-tw/2,PL),W-PR-tw);
+        const ty=Math.max(PT,yP(Math.max(incVals[i],expVals[i]))-th-8);
+        tipEl=document.createElementNS('http://www.w3.org/2000/svg','g');
+        const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
+        bg.setAttribute('x',tx);bg.setAttribute('y',ty);bg.setAttribute('width',tw);bg.setAttribute('height',th);
+        bg.setAttribute('rx','5');bg.setAttribute('fill','#1e1e1e');bg.setAttribute('stroke','#333');
+        const tl=document.createElementNS('http://www.w3.org/2000/svg','text');
+        tl.setAttribute('x',tx+tw/2);tl.setAttribute('y',ty+13);tl.setAttribute('text-anchor','middle');
+        tl.setAttribute('fill','#aaa');tl.setAttribute('font-size','9');tl.textContent=d.label;
+        const ti=document.createElementNS('http://www.w3.org/2000/svg','text');
+        ti.setAttribute('x',tx+8);ti.setAttribute('y',ty+29);
+        ti.setAttribute('fill','#6dd6a0');ti.setAttribute('font-size','9');ti.setAttribute('font-family','monospace');
+        ti.textContent='收入 NT$'+fmt(incVals[i]);
+        const te=document.createElementNS('http://www.w3.org/2000/svg','text');
+        te.setAttribute('x',tx+8);te.setAttribute('y',ty+44);
+        te.setAttribute('fill','#e07070');te.setAttribute('font-size','9');te.setAttribute('font-family','monospace');
+        te.textContent='支出 NT$'+fmt(expVals[i]);
+        tipEl.appendChild(bg);tipEl.appendChild(tl);tipEl.appendChild(ti);tipEl.appendChild(te);
+        svg.appendChild(tipEl);
+      };
+      const hideTip=()=>{if(tipEl){svg.removeChild(tipEl);tipEl=null;}};
+      hit.addEventListener('mouseenter',showTip);
+      hit.addEventListener('mouseleave',hideTip);
+      hit.addEventListener('touchstart',e=>{e.preventDefault();showTip();},{passive:false});
+      hit.addEventListener('touchend',()=>setTimeout(hideTip,1800));
+      svg.appendChild(hit);
+    });
+
+    // x labels
+    const step=data.length>12?Math.ceil(data.length/8):1;
+    data.forEach((d,i)=>{
+      if(i%step!==0&&i!==data.length-1)return;
+      const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
+      txt.setAttribute('x',xP(i));txt.setAttribute('y',H-4);txt.setAttribute('text-anchor','middle');
+      txt.setAttribute('fill','#444');txt.setAttribute('font-size','8');txt.textContent=d.label;svg.appendChild(txt);
+    });
+
+    // legend
+    [['#6dd6a0','收入'],['#e07070','支出']].forEach(([c,l],i)=>{
+      const lx=PL+i*54;
+      const lr=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      lr.setAttribute('x',lx);lr.setAttribute('y',PT-10);lr.setAttribute('width','12');lr.setAttribute('height','3');
+      lr.setAttribute('fill',c);lr.setAttribute('rx','2');svg.appendChild(lr);
+      const lt=document.createElementNS('http://www.w3.org/2000/svg','text');
+      lt.setAttribute('x',lx+15);lt.setAttribute('y',PT-7);lt.setAttribute('fill','#666');lt.setAttribute('font-size','9');
+      lt.textContent=l;svg.appendChild(lt);
+    });
+
+    return svg;
+  }
+
+  const incExpChartCard = monthlyData.length>0 ? h('div',{class:'chart-card'},
     h('div',{class:'chart-header'},
       h('div',{class:'chart-title'},'每月收支變化'),
-      h('div',{class:'chart-sub'},'藍柱=收入 橘柱=支出 線=淨額')
+      h('div',{class:'chart-sub'},'綠=收入 紅=支出')
     ),
-    renderComboChart(
-      monthlyData.map(d=>({...d,expenseNeg:-d.expense})),
-      '','','income','saving','#4488cc','#6dd6a0'
-    )
+    renderDualLineChart(monthlyData)
   ) : null;
 
-  const expenseChartCard = monthlyData.length>0 ? h('div',{class:'chart-card'},
-    h('div',{class:'chart-header'},
-      h('div',{class:'chart-title'},'每月支出變化'),
-      h('div',{class:'chart-sub'},'柱=支出金額 線=趨勢')
-    ),
-    renderComboChart(monthlyData,'','','expense','expense','#e07070','#ff9090')
-  ) : null;
+  const expenseChartCard = null;
 
   const yearCatCard = yearCatSorted.length>0 ? h('div',{class:'chart-card'},
     h('div',{class:'chart-header'},
@@ -2016,8 +2114,7 @@ function renderHome() {
 
   return h('div',{class:'page'},
     summaryCards,
-    savingsChartCard,
-    expenseChartCard,
+    incExpChartCard,
     yearCatCard
   );
 }
