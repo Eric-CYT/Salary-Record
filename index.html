@@ -1846,25 +1846,28 @@ function renderHome() {
   // ── combo chart: monthly savings bar + line ──
   function renderComboChart(data, title, sub, barKey, lineKey, barColor, lineColor) {
     if(!data.length) return h('div',{class:'empty'},'尚無資料');
-    const W=320,H=160,PL=50,PR=14,PT=16,PB=28,IW=W-PL-PR,IH=H-PT-PB;
-    const barVals=data.map(d=>d[barKey]), lineVals=data.map(d=>d[lineKey]);
-    const allVals=[...barVals,...lineVals].filter(v=>v!==undefined);
+    const W=320,H=170,PL=50,PR=14,PT=16,PB=28,IW=W-PL-PR,IH=H-PT-PB;
+    const barVals=data.map(d=>d[barKey]||0), lineVals=data.map(d=>d[lineKey]||0);
+    const allVals=[...barVals,...lineVals];
     const maxV=Math.max(...allVals,1);
-    const minV=Math.min(...lineVals,0);
-    const pad=(maxV-minV)*0.1||1000;
+    const minV=Math.min(...allVals,0);
+    const pad=(maxV-minV)*0.12||1000;
     const yMax=maxV+pad, yMin=minV-pad;
     const xP=i=>PL+(i+0.5)*(IW/data.length);
     const yP=v=>PT+IH-((v-yMin)/(yMax-yMin))*IH;
-    const bw=Math.max(4,(IW/data.length)*0.6);
+    const bw=Math.max(4,(IW/data.length)*0.55);
     const fY=v=>v>=10000?Math.round(v/1000)+'k':fmt(Math.abs(v));
     const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
     svg.setAttribute('viewBox','0 0 '+W+' '+H);svg.setAttribute('class','chart');
-    // grid
+
+    // zero line
     const zero=yP(0);
     const gridLine=document.createElementNS('http://www.w3.org/2000/svg','line');
     gridLine.setAttribute('x1',PL);gridLine.setAttribute('y1',zero);gridLine.setAttribute('x2',W-PR);gridLine.setAttribute('y2',zero);
     gridLine.setAttribute('stroke','#2a2a2a');gridLine.setAttribute('stroke-width','1');gridLine.setAttribute('stroke-dasharray','3,3');
     svg.appendChild(gridLine);
+
+    // grid labels
     [yMin,(yMin+yMax)/2,yMax].forEach(v=>{
       const y=yP(v);
       const line=document.createElementNS('http://www.w3.org/2000/svg','line');
@@ -1875,30 +1878,74 @@ function renderHome() {
       txt.setAttribute('fill','#444');txt.setAttribute('font-size','8');txt.setAttribute('font-family','monospace');
       txt.textContent=fY(v);svg.appendChild(txt);
     });
+
     // bars
     data.forEach((d,i)=>{
-      const bv=d[barKey]||0,cx=xP(i),by=yP(Math.max(bv,0)),bh=Math.abs(yP(0)-yP(bv));
+      const bv=barVals[i],cx=xP(i),by=yP(Math.max(bv,0)),bh=Math.abs(yP(0)-yP(bv));
       const bar=document.createElementNS('http://www.w3.org/2000/svg','rect');
       bar.setAttribute('x',cx-bw/2);bar.setAttribute('y',Math.min(by,yP(0)));
       bar.setAttribute('width',bw);bar.setAttribute('height',Math.max(bh,2));
       bar.setAttribute('fill',barColor);bar.setAttribute('opacity','0.6');bar.setAttribute('rx','2');
       svg.appendChild(bar);
     });
-    // line
+
+    // line + dots
     if(data.length>1){
-      const coords=data.map((d,i)=>xP(i)+','+yP(d[lineKey]||0)).join(' ');
+      const coords=data.map((d,i)=>xP(i)+','+yP(lineVals[i])).join(' ');
       const pline=document.createElementNS('http://www.w3.org/2000/svg','polyline');
       pline.setAttribute('points',coords);pline.setAttribute('fill','none');
       pline.setAttribute('stroke',lineColor);pline.setAttribute('stroke-width','2');
       pline.setAttribute('stroke-linejoin','round');pline.setAttribute('stroke-linecap','round');
       svg.appendChild(pline);
-      data.forEach((d,i)=>{
-        const c2=document.createElementNS('http://www.w3.org/2000/svg','circle');
-        c2.setAttribute('cx',xP(i));c2.setAttribute('cy',yP(d[lineKey]||0));
-        c2.setAttribute('r','3');c2.setAttribute('fill',lineColor);
-        c2.setAttribute('stroke','#0a0a0a');c2.setAttribute('stroke-width','1.5');svg.appendChild(c2);
-      });
     }
+
+    // dots with tooltip
+    let tipEl=null;
+    data.forEach((d,i)=>{
+      const cx=xP(i),cy=yP(lineVals[i]);
+      const c2=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      c2.setAttribute('cx',cx);c2.setAttribute('cy',cy);c2.setAttribute('r','3.5');
+      c2.setAttribute('fill',lineColor);c2.setAttribute('stroke','#0a0a0a');c2.setAttribute('stroke-width','1.5');
+      svg.appendChild(c2);
+
+      // hit area for tooltip
+      const hit=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      hit.setAttribute('x',cx-bw/2-2);hit.setAttribute('y',PT);
+      hit.setAttribute('width',bw+4);hit.setAttribute('height',IH+PB);
+      hit.setAttribute('fill','transparent');
+
+      const showTip=()=>{
+        if(tipEl) svg.removeChild(tipEl);
+        const tw=110,th=52,tx=Math.min(Math.max(cx-tw/2,PL),W-PR-tw),ty=Math.max(PT,cy-th-10);
+        tipEl=document.createElementNS('http://www.w3.org/2000/svg','g');
+        const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
+        bg.setAttribute('x',tx);bg.setAttribute('y',ty);bg.setAttribute('width',tw);bg.setAttribute('height',th);
+        bg.setAttribute('rx','5');bg.setAttribute('fill','#1e1e1e');bg.setAttribute('stroke','#333');
+        // month label
+        const tl=document.createElementNS('http://www.w3.org/2000/svg','text');
+        tl.setAttribute('x',tx+tw/2);tl.setAttribute('y',ty+13);tl.setAttribute('text-anchor','middle');
+        tl.setAttribute('fill','#aaa');tl.setAttribute('font-size','9');tl.textContent=d.label;
+        // income
+        const ti=document.createElementNS('http://www.w3.org/2000/svg','text');
+        ti.setAttribute('x',tx+6);ti.setAttribute('y',ty+27);
+        ti.setAttribute('fill',barColor);ti.setAttribute('font-size','9');ti.setAttribute('font-family','monospace');
+        ti.textContent='收入 NT$'+fmt(barVals[i]);
+        // net
+        const tn=document.createElementNS('http://www.w3.org/2000/svg','text');
+        tn.setAttribute('x',tx+6);tn.setAttribute('y',ty+42);
+        tn.setAttribute('fill',lineColor);tn.setAttribute('font-size','9');tn.setAttribute('font-family','monospace');
+        tn.textContent='淨額 '+(lineVals[i]>=0?'+':'')+'NT$'+fmt(lineVals[i]);
+        tipEl.appendChild(bg);tipEl.appendChild(tl);tipEl.appendChild(ti);tipEl.appendChild(tn);
+        svg.appendChild(tipEl);
+      };
+      const hideTip=()=>{ if(tipEl){svg.removeChild(tipEl);tipEl=null;} };
+      hit.addEventListener('mouseenter',showTip);
+      hit.addEventListener('mouseleave',hideTip);
+      hit.addEventListener('touchstart',e=>{e.preventDefault();showTip();},{passive:false});
+      hit.addEventListener('touchend',()=>setTimeout(hideTip,1800));
+      svg.appendChild(hit);
+    });
+
     // x labels
     const step=data.length>12?Math.ceil(data.length/8):1;
     data.forEach((d,i)=>{
@@ -1942,7 +1989,7 @@ function renderHome() {
 
   const savingsChartCard = monthlyData.length>0 ? h('div',{class:'chart-card'},
     h('div',{class:'chart-header'},
-      h('div',{class:'chart-title'},'每月存款'),
+      h('div',{class:'chart-title'},'每月收支變化'),
       h('div',{class:'chart-sub'},'藍柱=收入 橘柱=支出 線=淨額')
     ),
     renderComboChart(
