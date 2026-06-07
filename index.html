@@ -2110,7 +2110,9 @@ function renderHome() {
     });
 
     // legend
-    ([[incColor||'#6dd6a0',incLabel||'收入']]+(expKey&&expLabel?[,[expColor||'#e07070',expLabel]]:[])).flat(1).filter(Boolean).reduce((a,v,i)=>{if(i%2===0)a.push([v]);else a[a.length-1].push(v);return a;},[]).forEach(([c,l],i)=>{
+    const legendItems=[[incColor||'#6dd6a0',incLabel||'收入']];
+    if(expKey&&expLabel) legendItems.push([expColor||'#e07070',expLabel]);
+    legendItems.forEach(([c,l],i)=>{
       const lx=PL+i*54;
       const lr=document.createElementNS('http://www.w3.org/2000/svg','rect');
       lr.setAttribute('x',lx);lr.setAttribute('y',PT-10);lr.setAttribute('width','12');lr.setAttribute('height','3');
