@@ -1440,12 +1440,13 @@ function mkExpRow(item, idx, items, mk2) {
 }
 
 function renderExpense() {
+  console.log('renderExpense called, subTab:', STATE.expenseSubTab, 'month:', STATE.expenseMonth);
   const monthList = getMonthList();
   const mk2 = STATE.expenseMonth;
 
   // ensure array format
   migrateExpenseMonth(mk2);
-  if (!STATE.expenseData[mk2]) STATE.expenseData[mk2] = [];
+  if (!STATE.expenseData[mk2] || !Array.isArray(STATE.expenseData[mk2])) STATE.expenseData[mk2] = [];
   const items = STATE.expenseData[mk2];
   const expItems = items.filter(i=>i.catId !== SAVING_CAT_ID);
   const savItems = items.filter(i=>i.catId === SAVING_CAT_ID);
@@ -1482,7 +1483,7 @@ function renderExpense() {
   if (STATE.expenseSubTab === 'input') {
     // summary bar at top
     const catTotals = {};
-    items.forEach(i=>{ catTotals[i.catId]=(catTotals[i.catId]||0)+(Number(i.amount)||0); });
+    expItems.forEach(i=>{ catTotals[i.catId]=(catTotals[i.catId]||0)+(Number(i.amount)||0); });
     const topCats = Object.entries(catTotals).sort((a,b)=>b[1]-a[1]).slice(0,5);
 
     const summaryCard = total > 0 ? h('div',{class:'exp-total-card'},
@@ -1702,6 +1703,7 @@ function renderExpense() {
     );
   }
 
+  if (!mainContent) mainContent = h('div',{class:'empty'},'載入中...');
   return h('div',{class:'page'},configRow,subTabs,mainContent);
 }
 
