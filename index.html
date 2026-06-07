@@ -1751,6 +1751,21 @@ function getMonthNetIncome(mk2) {
   const taxAdd = d.taxAdd||d.a||[], taxDed=d.taxDed||[], exempt=d.exempt||d.b||[], other=d.other||d.c||[];
   return Math.max(0,sumItems(taxAdd)-sumItems(taxDed))+sumItems(exempt)-sumItems(other);
 }
+// Regular income: excludes annual lump sums (yearend, perfBonus, otherBonus)
+function getMonthRegularIncome(mk2) {
+  const d = STATE.salaryData[mk2];
+  if (!d) return 0;
+  const taxAdd = (d.taxAdd||d.a||[]).filter(i=>!ANNUAL_IDS.has(i.id));
+  const taxDed = d.taxDed||[], exempt=d.exempt||d.b||[], other=d.other||d.c||[];
+  return Math.max(0,sumItems(taxAdd)-sumItems(taxDed))+sumItems(exempt)-sumItems(other);
+}
+// Annual bonus income only
+function getMonthBonusIncome(mk2) {
+  const d = STATE.salaryData[mk2];
+  if (!d) return 0;
+  const taxAdd = (d.taxAdd||d.a||[]).filter(i=>ANNUAL_IDS.has(i.id));
+  return sumItems(taxAdd);
+}
 
 function getMonthExpense(mk2) {
   const d = STATE.expenseData[mk2];
@@ -1782,15 +1797,20 @@ function renderHome() {
     }
   });
 
-  // Monthly savings data for combo chart
+  // Monthly data for charts
   const monthlyData = allMonths.filter(mo=>{
     return getMonthNetIncome(mo.key)>0||getMonthExpense(mo.key)>0;
   }).map(mo=>({
     label: mo.key.slice(2).replace('-','/'),
     income: getMonthNetIncome(mo.key),
+    regularIncome: getMonthRegularIncome(mo.key),
+    bonus: getMonthBonusIncome(mo.key),
     expense: getMonthExpense(mo.key),
     saving: getMonthNetIncome(mo.key)-getMonthExpense(mo.key),
   }));
+
+  // Total cumulative income (all history)
+  const totalCumIncome = allMonths.reduce((s,mo)=>s+getMonthNetIncome(mo.key), 0);
 
   // Year expense by category
   const yearCatTotals = {};
@@ -1840,6 +1860,11 @@ function renderHome() {
     h('div',{class:'dash-card full accent-red'},
       h('div',{class:'dash-label'},'年度累計花費（'+year+'年）'),
       h('div',{class:'dash-val',style:'color:#e07070'},'NT$'+fmt(yearExpense))
+    ),
+    h('div',{class:'dash-card full',style:'border-color:#2a3a5a;background:linear-gradient(135deg,#0d1220,#0a1018)'},
+      h('div',{class:'dash-label'},'歷史總收入累積'),
+      h('div',{class:'dash-val',style:'color:#70a8f0'},'NT$'+fmt(totalCumIncome)),
+      h('div',{class:'dash-sub'},'自有記錄以來所有月份收入加總')
     )
   );
 
@@ -1987,16 +2012,19 @@ function renderHome() {
     return svg;
   }
 
-  // ── dual line chart: income + expense ──
-  function renderDualLineChart(data) {
+  // ── dual line chart: regular income + expense (scrollable, no annual bonus) ──
+  function renderDualLineChart(data, incKey, expKey, incColor, expColor, incLabel, expLabel) {
     if(!data.length) return h('div',{class:'empty'},'尚無資料');
-    const W=320,H=170,PL=50,PR=14,PT=20,PB=28,IW=W-PL-PR,IH=H-PT-PB;
-    const incVals=data.map(d=>d.income||0), expVals=data.map(d=>d.expense||0);
+    // Make chart wider if many months
+    const minW=320, perCol=28;
+    const W=Math.max(minW, data.length*perCol+64);
+    const H=170,PL=50,PR=14,PT=24,PB=28,IW=W-PL-PR,IH=H-PT-PB;
+    const incVals=data.map(d=>d[incKey||'regularIncome']||0), expVals=data.map(d=>d[expKey||'expense']||0);
     const allVals=[...incVals,...expVals];
     const maxV=Math.max(...allVals,1), minV=0;
     const pad=maxV*0.12||1000;
     const yMax=maxV+pad, yMin=0;
-    const xP=i=>PL+(i/(data.length-1||1))*IW;
+    const xP=i=>PL+(data.length>1?(i/(data.length-1))*IW:IW/2);
     const yP=v=>PT+IH-((v-yMin)/(yMax-yMin))*IH;
     const fY=v=>v>=10000?Math.round(v/1000)+'k':fmt(v);
     const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
@@ -2081,7 +2109,7 @@ function renderHome() {
     });
 
     // legend
-    [['#6dd6a0','收入'],['#e07070','支出']].forEach(([c,l],i)=>{
+    [[incColor||'#6dd6a0',incLabel||'收入'],[expColor||'#e07070',expLabel||'支出']].forEach(([c,l],i)=>{
       const lx=PL+i*54;
       const lr=document.createElementNS('http://www.w3.org/2000/svg','rect');
       lr.setAttribute('x',lx);lr.setAttribute('y',PT-10);lr.setAttribute('width','12');lr.setAttribute('height','3');
@@ -2091,15 +2119,28 @@ function renderHome() {
       lt.textContent=l;svg.appendChild(lt);
     });
 
-    return svg;
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'overflow-x:auto;-webkit-overflow-scrolling:touch;';
+    wrapper.appendChild(svg);
+    return wrapper;
   }
 
   const incExpChartCard = monthlyData.length>0 ? h('div',{class:'chart-card'},
     h('div',{class:'chart-header'},
       h('div',{class:'chart-title'},'每月收支變化'),
-      h('div',{class:'chart-sub'},'綠=收入 紅=支出')
+      h('div',{class:'chart-sub'},'不含年終獎金 ｜ 左右滑動')
     ),
-    renderDualLineChart(monthlyData)
+    renderDualLineChart(monthlyData,'regularIncome','expense','#6dd6a0','#e07070','經常收入','支出')
+  ) : null;
+
+  // Bonus chart: only months that have bonus
+  const bonusData = monthlyData.filter(d=>d.bonus>0);
+  const bonusChartCard = bonusData.length>0 ? h('div',{class:'chart-card'},
+    h('div',{class:'chart-header'},
+      h('div',{class:'chart-title'},'年終 & 績效獎金'),
+      h('div',{class:'chart-sub'},'含年終、績效、其他獎金')
+    ),
+    renderDualLineChart(bonusData,'bonus','expense','#f0c060','#e07070','獎金','支出')
   ) : null;
 
   const expenseChartCard = null;
@@ -2115,6 +2156,7 @@ function renderHome() {
   return h('div',{class:'page'},
     summaryCards,
     incExpChartCard,
+    bonusChartCard,
     yearCatCard
   );
 }
