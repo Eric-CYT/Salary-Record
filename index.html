@@ -1347,7 +1347,7 @@ function showCatPicker(item, onSelect) {
 }
 
 function mkExpRow(item, idx, items, mk2) {
-  const cat = EXP_CATS.find(c=>c.id===item.catId) || EXP_CATS[0];
+  const cat = (item.catId ? EXP_CATS.find(c=>c.id===item.catId) : null) || EXP_CATS[EXP_CATS.length-1];
   const isSaving = item.catId === SAVING_CAT_ID;
   const el = h('div',{class:'sal-item',draggable:'true',
     style:'border-left:3px solid '+cat.color+(isSaving?';background:rgba(240,208,96,0.06)':'')},
@@ -1989,12 +1989,19 @@ function renderPage() {
   const main=document.getElementById('main-content');
   main.innerHTML='';
   let el;
-  if(STATE.page==='home') el=renderHome();
-  else if(STATE.page==='ot') el=renderOT();
-  else if(STATE.page==='salary') el=renderSalary();
-  else if(STATE.page==='annual') el=renderAnnual();
-  else el=renderExpense();
-  main.appendChild(el);
+  try {
+    if(STATE.page==='home') el=renderHome();
+    else if(STATE.page==='ot') el=renderOT();
+    else if(STATE.page==='salary') el=renderSalary();
+    else if(STATE.page==='annual') el=renderAnnual();
+    else el=renderExpense();
+    main.appendChild(el);
+  } catch(err) {
+    console.error('renderPage error:', err);
+    main.appendChild(h('div',{style:'color:#e07070;padding:20px;font-family:monospace;font-size:12px'},
+      '⚠️ 渲染錯誤：'+err.message
+    ));
+  }
 }
 
 // ══════════════════════════════════════════════
